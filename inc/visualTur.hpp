@@ -26,7 +26,6 @@ typedef struct
 	char * dataset_name;
 	// octree file
 	char * octreeFile;
-
 } visualTurParams_t;
 
 class visualTur
