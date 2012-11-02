@@ -109,7 +109,7 @@ void lruCache::changeDimensionCube(int maxElements, int3 cDim, int cI)
 	cubeDim 	= cDim;
 	cubeInc		= make_int3(cI,cI,cI);
 	realcubeDim	= cubeDim + 2 * cubeInc;
-	offsetCube	= (cubeDim.x+2*cubeInc.x)*(cubeDim.y+2*cubeInc.y)*(cubeDim.z+2*cubeInc.z);
+	offsetCube	= realcubeDim.x*realcubeDim.y*realcubeDim.z ;//(cubeDim.x+2*cubeInc.x)*(cubeDim.y+2*cubeInc.y)*(cubeDim.z+2*cubeInc.z);
 	queuePositions  = new LinkedList(numElements);
 
 	std::cerr<<"Creating cache in GPU: "<<cudaGetErrorString(cudaMalloc((void**)&cacheData, numElements*offsetCube*sizeof(float)))<<std::endl;
@@ -148,27 +148,36 @@ void lruCache::updateCache(visibleCube_t * visibleCubes, int num, int nLevels)
 	unsigned int pos = 0;
 	float * auxData = new float[offsetCube];
 
+	int newCubes = 0;
+
 	for(int i=0; i<num; i++)
 	{
-
-		if (insertElement(visibleCubes[i].id, &pos))
+		if (visibleCubes[i].id != 0)
 		{
-			int level = getIndexLevel(visibleCubes[i].id);
-			int3 coord = getMinBoxIndex2(visibleCubes[i].id, level, nLevels);
-			int3 minBox = coord - cubeInc;
-			int3 maxBox = coord + realcubeDim;
-			fileManager->readHDF5_Voxel_Array(minBox, maxBox, auxData);
 
-			visibleCubes[i].data = cacheData + pos*offsetCube;
-			std::cerr<<"Creating cache in GPU: "<<cudaGetErrorString(cudaMemcpy((void*) visibleCubes[i].data, (const void*) auxData, offsetCube*sizeof(float), cudaMemcpyHostToDevice))<<std::endl;
-		}
-		else
-		{
-			visibleCubes[i].data = cacheData + pos*offsetCube;
+			if (insertElement(visibleCubes[i].id, &pos))
+			{
+				int level = getIndexLevel(visibleCubes[i].id);
+				int3 coord = getMinBoxIndex2(visibleCubes[i].id, level, nLevels);
+				int3 minBox = coord - cubeInc;
+				int3 maxBox = minBox + realcubeDim;
+				fileManager->readHDF5_Voxel_Array(minBox, maxBox, auxData);
+
+				visibleCubes[i].data = cacheData + pos*offsetCube;
+				std::cerr<<"Creating cache in GPU: "<<cudaGetErrorString(cudaMemcpy((void*) visibleCubes[i].data, (const void*) auxData, offsetCube*sizeof(float), cudaMemcpyHostToDevice))<<std::endl;
+
+				newCubes++;
+			}
+			else
+			{
+				visibleCubes[i].data = cacheData + pos*offsetCube;
+			}
 		}
 	}
 
 	delete[] auxData;
+
+	std::cerr<<"New cubes on cache: "<<newCubes<<std::endl;
 }
 int	 lruCache::get_numElements(){return numElements;}
 int3	 lruCache::get_cubeDim(){return cubeDim;}

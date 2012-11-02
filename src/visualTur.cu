@@ -116,4 +116,7 @@ void visualTur::updateVisibleCubes(int level)
 			hits++;
 	std::cout<<"Hits "<<hits<<std::endl;
 	#endif
+
+	cache->updateCache(visibleCubesCPU, camera->get_numRays(), octree->getnLevels());
+
 }
