@@ -25,7 +25,7 @@ obj/visualTur.o: src/visualTur.cu inc/visualTur.hpp
 
 testPrograms: bin/testVisualTur
 
-bin/testVisualTur:
+bin/testVisualTur: Objects src/testVisualTur.cu
 	$(NVCC) $(NFLAGS) $(INCLUDE) obj/Screen.o obj/Camera.o obj/FileManager.o  obj/lruCache.o obj/Octree.o obj/visualTur.o src/testVisualTur.cu  -o bin/testVisualTur $(LIBRARY)
 
 clean:

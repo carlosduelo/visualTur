@@ -76,8 +76,44 @@ void visualTur::changeCacheParameters(int nE, int3 cDim, int cInc)
 	resetVisibleCubes();
 }
 
+void	visualTur::camera_Move(float3 Direction)
+{
+	camera->Move(Direction);
+}
+void	visualTur::camera_RotateX(float Angle)
+{
+	camera->RotateX(Angle);
+}
+void	visualTur::camera_RotateY(float Angle)
+{
+	camera->RotateY(Angle);
+}
+void	visualTur::camera_RotateZ(float Angle)
+{
+	camera->RotateZ(Angle);
+}
+void	visualTur::camera_MoveForward(float Distance)
+{
+	camera->MoveForward(Distance);
+}
+void	visualTur::camera_MoveUpward(float Distance)
+{
+	camera->MoveUpward(Distance);
+}
+void	visualTur::camera_StrafeRight(float Distance)
+{
+	camera->StrafeRight(Distance);
+}
 
 void visualTur::updateVisibleCubes(int level)
 {
 	octree->getBoxIntersected(level, visibleCubesGPU, visibleCubesCPU);
+
+	#if 1
+	int hits = 0;
+	for(int i=0; i<camera->get_numRays(); i++)
+		if (visibleCubesCPU[i].id != 0)
+			hits++;
+	std::cout<<"Hits "<<hits<<std::endl;
+	#endif
 }

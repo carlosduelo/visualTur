@@ -48,12 +48,23 @@ class visualTur
 
 		~visualTur();
 
+		// Change parameters
 		void changeScreen(int pW, int pH, float pfovW, float pfovH, float pDistance);
 
 		void changeNumRays(int pnR);
 
 		void changeCacheParameters(int nE, int3 cDim, int cInc);
 
+		// Move camera
+		void	camera_Move(float3 Direction);
+		void	camera_RotateX(float Angle);
+		void	camera_RotateY(float Angle);
+		void	camera_RotateZ(float Angle);
+		void	camera_MoveForward(float Distance);
+		void	camera_MoveUpward(float Distance);
+		void	camera_StrafeRight(float Distance);	
+
+		// Octree search
 		void updateVisibleCubes(int level);
 };
 #endif

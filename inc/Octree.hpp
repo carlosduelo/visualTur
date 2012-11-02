@@ -22,7 +22,7 @@ class Octree
 		int	*	sizes;
 	public:
 		/* Lee el Octree de un fichero */
-		Octree(const char * file_name, Camera * camera);
+		Octree(const char * file_name, Camera * p_camera);
 
 		~Octree();
 

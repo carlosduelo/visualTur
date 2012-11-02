@@ -758,9 +758,9 @@ __global__ void insertOctreePointers(index_node_t ** octreeGPU, int * sizes, ind
 */
 
 /* Lee el Octree de un fichero */
-Octree::Octree(const char * file_name, Camera * camera)
+Octree::Octree(const char * file_name, Camera * p_camera)
 {
-	camera = camera;
+	camera = p_camera;
 
         /* Read octree from file */
 	std::ifstream file;
