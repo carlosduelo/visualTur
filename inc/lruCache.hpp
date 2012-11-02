@@ -7,6 +7,7 @@
 #define _LRU_CACHE_H_
 #include "config.hpp"
 #include "FileManager.hpp"
+#include "cutil_math.h"
 #include <map>
 
 

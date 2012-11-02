@@ -5,7 +5,7 @@
 
 #ifndef _VISUALTUR_H_
 #define _VISUALTUR_H_
-#include "Camera.hpp"
+#include "Octree.hpp"
 #include "lruCache.hpp"
 
 typedef struct
@@ -33,17 +33,27 @@ class visualTur
 	private:
 		Camera * 	camera;
 
-		visibleCube_t *	visibleCubes;
+		visibleCube_t *	visibleCubesCPU;
+		visibleCube_t *	visibleCubesGPU;
 
 		lruCache *	cache;
 
+		Octree *	octree;
+		float 		iso;
+
 		void resetVisibleCubes();
+
 	public:
 		visualTur(visualTurParams_t initParams);
 
 		~visualTur();
 
-		void changeParams(visualTurParams_t params);
+		void changeScreen(int pW, int pH, float pfovW, float pfovH, float pDistance);
 
+		void changeNumRays(int pnR);
+
+		void changeCacheParameters(int nE, int3 cDim, int cInc);
+
+		void updateVisibleCubes(int level);
 };
 #endif

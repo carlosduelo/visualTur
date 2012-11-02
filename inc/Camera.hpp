@@ -7,6 +7,7 @@
 #define _CAMERA_H_
 
 #include "Screen.hpp"
+#include "cutil_math.h"
 
 class Camera
 {

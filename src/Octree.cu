@@ -613,7 +613,7 @@ __device__ int3 _cuda_updateCoordinates(int maxLevel, int cLevel, index_node_t c
 	}
 }
 
-__device__ void _cuda_getFirtsVoxel(index_node_t ** octree, int * sizes, int nLevels, float3 origin, float3 ray, int finalLevel, index_node_t * indexNode)
+__device__ void _cuda_getFirtsVoxel(index_node_t ** octree, int * sizes, int nLevels, float3 origin, float3 ray, int finalLevel, visibleCube_t * indexNode)
 {
 	index_node_t 	stackIndex[64];
 	int		stackLevel[64];
@@ -641,7 +641,7 @@ __device__ void _cuda_getFirtsVoxel(index_node_t ** octree, int * sizes, int nLe
 
 		if (stackActual < 0)
 		{
-			*indexNode = 0;
+			indexNode->id = 0;
 			return;
 			//end = true;
 		}
@@ -714,7 +714,7 @@ __device__ void _cuda_getFirtsVoxel(index_node_t ** octree, int * sizes, int nLe
 			}
 			if (nValid > 0 && finalLevel == (currentLevel+1))
 			{
-				*indexNode = children[0];
+				indexNode->id = children[0];
 				//end=true;
 				return;
 			}	
@@ -722,20 +722,20 @@ __device__ void _cuda_getFirtsVoxel(index_node_t ** octree, int * sizes, int nLe
 	}
 }
 
-__global__ void cuda_getFirtsVoxel(index_node_t ** octree, int * sizes, int nLevels, float3 origin, float3 * rays, int finalLevel, index_node_t * indexNode, int numElements)
+__global__ void cuda_getFirtsVoxel(index_node_t ** octree, int * sizes, int nLevels, float3 origin, float3 * rays, int finalLevel, visibleCube_t * indexNode, int numElements)
 {
-	int id = blockIdx.y * blockDim.x * gridDim.y + blockIdx.x * blockDim.x +threadIdx.x;
+	int i = blockIdx.y * blockDim.x * gridDim.y + blockIdx.x * blockDim.x +threadIdx.x;
 
-	if (id < numElements)
+	if (i < numElements)
 	{
 		float tnear, tfar;
-		if (!_cuda_checkRange(octree[0],1,0,1) || !_cuda_RayAABB(1, origin, rays[id],  &tnear, &tfar, nLevels))
+		if (!_cuda_checkRange(octree[0],1,0,1) || !_cuda_RayAABB(1, origin, rays[i],  &tnear, &tfar, nLevels))
 		{
-			*indexNode = 0;
+			indexNode[i].id = 0;
 			return;
 		}
 		else
-			_cuda_getFirtsVoxel(octree, sizes, nLevels, origin, rays[id], finalLevel, &indexNode[id]);
+			_cuda_getFirtsVoxel(octree, sizes, nLevels, origin, rays[i], finalLevel, &indexNode[i]);
 	}
 
 	return;
@@ -760,6 +760,8 @@ __global__ void insertOctreePointers(index_node_t ** octreeGPU, int * sizes, ind
 /* Lee el Octree de un fichero */
 Octree::Octree(const char * file_name, Camera * camera)
 {
+	camera = camera;
+
         /* Read octree from file */
 	std::ifstream file;
 
@@ -810,12 +812,9 @@ Octree::Octree(const char * file_name, Camera * camera)
 	for(int i=0; i<=nLevels; i++)
 		total+=sizesCPU[i];
 
-	int numRays	= camera->get_numRays();
-
 	std::cerr<<"Allocating memory octree CUDA octree: "<< cudaGetErrorString(cudaMalloc(&octree, (nLevels+1)*sizeof(index_node_t*))) << std::endl;
 	std::cerr<<"Allocating memory octree CUDA memory: "<< cudaGetErrorString(cudaMalloc(&memoryGPU, total*sizeof(index_node_t))) << std::endl;
 	std::cerr<<"Allocating memory octree CUDA sizes: "<< cudaGetErrorString(cudaMalloc(&sizes,   (nLevels+1)*sizeof(int))) << std::endl;
-	std::cerr<<"Allocating memory octree CUDA indexs: "<< cudaGetErrorString(cudaMalloc(&indexGPU, numRays*sizeof(index_node_t))) << std::endl;
 
 	/* Compiando sizes */
 	std::cerr<<"Coping to device: "<< cudaGetErrorString(cudaMemcpy((void*)sizes, (void*)sizesCPU, (nLevels+1)*sizeof(int), cudaMemcpyHostToDevice)) << std::endl;
@@ -852,7 +851,11 @@ Octree::~Octree()
 	cudaFree(octree);	
 	cudaFree(memoryGPU);	
 	cudaFree(sizes);	
-	cudaFree(indexGPU);
+}
+
+float Octree::getIsosurface()
+{
+	return isosurface; 
 }
 
 int Octree::getnLevels()
@@ -861,7 +864,7 @@ int Octree::getnLevels()
 }
 
 /* Dado un rayo devuelve true si el rayo impacta contra el volumen, el primer box del nivel dado contra el que impacta y la distancia entre el origen del rayo y la box */
-bool Octree::getFirtsBoxIntersected(Camera * camera, int finalLevel, index_node_t * indexs)
+bool Octree::getBoxIntersected(int finalLevel, visibleCube_t * visibleGPU, visibleCube_t * visibleCPU)
 {
 	std::cerr<<"Getting firts box intersected"<<std::endl;
 
@@ -871,10 +874,10 @@ bool Octree::getFirtsBoxIntersected(Camera * camera, int finalLevel, index_node_
 
 	//std::cerr<<"Set HEAP size: "<< cudaGetErrorString(cudaThreadSetLimit(cudaLimitMallocHeapSize , numElements*1216)) << std::endl;
 
-	cuda_getFirtsVoxel<<<blocks,threads>>>(octree, sizes, nLevels, camera->get_position(), camera->get_rayDirections(), finalLevel, indexGPU, numElements);
+	cuda_getFirtsVoxel<<<blocks,threads>>>(octree, sizes, nLevels, camera->get_position(), camera->get_rayDirections(), finalLevel, visibleGPU, numElements);
 	std::cerr<<"Launching kernek blocks ("<<blocks.x<<","<<blocks.y<<","<<blocks.z<<") threads ("<<threads.x<<","<<threads.y<<","<<threads.z<<") error: "<< cudaGetErrorString(cudaGetLastError())<<std::endl;
 
-	std::cerr<<"Coping to host indexsCPUS: "<< cudaGetErrorString(cudaMemcpy((void*)indexs, (void*)indexGPU, numElements*sizeof(index_node_t), cudaMemcpyDeviceToHost)) << std::endl;
+	std::cerr<<"Coping to host visibleCubes: "<< cudaGetErrorString(cudaMemcpy((void*)visibleCPU, (const void*)visibleGPU, numElements*sizeof(visibleCube_t), cudaMemcpyDeviceToHost)) << std::endl;
 
 	std::cerr<<"End Getting firts box intersected"<<std::endl;
 	return true;
