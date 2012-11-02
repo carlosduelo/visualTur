@@ -9,6 +9,7 @@ int main(int argc, char ** argv)
 	params.H = 800;
 	params.fov_H = 35.0f;
 	params.fov_W = 35.0f;
+	params.distance = 50.0f;
 	params.numRayPx = 1;
 	params.maxElementsCache = 100;
 	params.dimCubeCache = make_int3(32,32,32);

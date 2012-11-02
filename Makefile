@@ -2,7 +2,7 @@ NVCC=nvcc
 OPT=-O0
 CUDACP=sm_13
 CFLAGS=$(OPT) -g -Wall
-NFLAGS=-m32 -G $(OPT) -arch=$(CUDACP) -Xcompiler '$(CFLAGS)'
+NFLAGS=-G $(OPT) -arch=$(CUDACP) -Xcompiler '$(CFLAGS)'
 INCLUDE=-Iinc/
 LIBRARY=-lm -lhdf5 -lGL -lglut -lGLU
 
