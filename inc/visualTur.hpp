@@ -7,6 +7,7 @@
 #define _VISUALTUR_H_
 #include "Octree.hpp"
 #include "lruCache.hpp"
+#include "rayCaster.hpp"
 
 typedef struct
 {
@@ -41,6 +42,8 @@ class visualTur
 		Octree *	octree;
 		float 		iso;
 
+		rayCaster *	raycaster;
+
 		void resetVisibleCubes();
 
 	public:
@@ -65,6 +68,6 @@ class visualTur
 		void	camera_StrafeRight(float Distance);	
 
 		// Octree search
-		void updateVisibleCubes(int level);
+		void updateVisibleCubes(int level, float * pixelBuffer);
 };
 #endif

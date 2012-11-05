@@ -8,7 +8,7 @@
 
 #define BLOCK_SIZE 128
 
-dim3 getBlocks(int dim)
+inline dim3 getBlocks(int dim)
 {
 	if (dim <= BLOCK_SIZE)
 	{
@@ -26,7 +26,7 @@ dim3 getBlocks(int dim)
 	}
 }
 
-dim3 getThreads(int dim)
+inline dim3 getThreads(int dim)
 {
 	int t = 32;
 	while(dim>t && t<BLOCK_SIZE)

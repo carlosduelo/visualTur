@@ -23,5 +23,5 @@ int main(int argc, char ** argv)
 	VisualTur->camera_Move(make_float3(52.0f, 52.0f, 520.0f));
 	VisualTur->camera_MoveForward(1.0f);
 
-	VisualTur->updateVisibleCubes(5);
+	VisualTur->updateVisibleCubes(5,0);
 }

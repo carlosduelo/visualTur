@@ -15,7 +15,12 @@ visualTur::visualTur(visualTurParams_t initParams)
 	// Cache creation
 	cache = new lruCache(initParams.hdf5File, initParams.dataset_name, initParams.maxElementsCache, initParams.dimCubeCache, initParams.cubeInc);
 
+	// Create octree
 	octree = new Octree(initParams.octreeFile, camera);
+
+	// Create rayCaster
+	raycaster = new rayCaster(octree->getIsosurface(), make_float3(0.0f, 512.0f, 0.0f));
+
 }
 
 visualTur::~visualTur()
@@ -25,6 +30,7 @@ visualTur::~visualTur()
 	delete[]	visibleCubesCPU;
 	cudaFree(visibleCubesGPU);
 	delete		octree;
+	delete		raycaster;
 }
 
 void visualTur::resetVisibleCubes()
@@ -105,7 +111,7 @@ void	visualTur::camera_StrafeRight(float Distance)
 	camera->StrafeRight(Distance);
 }
 
-void visualTur::updateVisibleCubes(int level)
+void visualTur::updateVisibleCubes(int level, float * pixelBuffer)
 {
 	octree->getBoxIntersected(level, visibleCubesGPU, visibleCubesCPU);
 
@@ -119,4 +125,5 @@ void visualTur::updateVisibleCubes(int level)
 
 	cache->updateCache(visibleCubesCPU, camera->get_numRays(), octree->getnLevels());
 
+	raycaster->render(camera, level, octree->getnLevels(), visibleCubesGPU, cache->get_cubeDim(), make_int3(cache->get_cubeInc(),cache->get_cubeInc(),cache->get_cubeInc()), pixelBuffer); 
 }
