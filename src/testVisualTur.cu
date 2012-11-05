@@ -1,4 +1,6 @@
 #include "visualTur.hpp"
+#include "FreeImage.h"
+#include <cuda_runtime.h>
 #include <iostream>
 #include <fstream>
 
@@ -23,5 +25,18 @@ int main(int argc, char ** argv)
 	VisualTur->camera_Move(make_float3(52.0f, 52.0f, 520.0f));
 	VisualTur->camera_MoveForward(1.0f);
 
-	VisualTur->updateVisibleCubes(5,0);
+	FreeImage_Initialise();
+
+	float * screenG = 0;
+	float * screenC = new float[800*800*4];
+	cudaMalloc((void**)screenG, sizeof(float)*800*800*4);
+
+	VisualTur->updateVisibleCubes(5.0, screenG);
+
+	cudaMemcpy((void*) screenG, (const void*) screenG, sizeof(float)*800*800*4, cudaMemcpyDeviceToHost);
+
+	//FIBITMAP *img = FreeImage_ConvertFromRawBits((BYTE*)screenC, 800, 800, 800 * 3, 24, 0xFF0000, 0x00FF00, 0x0000FF, false);
+	//FreeImage_Save(FIF_PNG, img, "prueba.png", 0);
+
+	FreeImage_DeInitialise();
 }

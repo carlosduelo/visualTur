@@ -67,7 +67,6 @@ class visualTur
 		void	camera_MoveUpward(float Distance);
 		void	camera_StrafeRight(float Distance);	
 
-		// Octree search
 		void updateVisibleCubes(int level, float * pixelBuffer);
 };
 #endif
