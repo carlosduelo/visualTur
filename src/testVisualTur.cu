@@ -29,11 +29,11 @@ int main(int argc, char ** argv)
 
 	float * screenG = 0;
 	float * screenC = new float[800*800*4];
-	cudaMalloc((void**)screenG, sizeof(float)*800*800*4);
+	std::cerr<<"Allocating memory octree CUDA screen: "<< cudaGetErrorString(cudaMalloc((void**)&screenG, sizeof(float)*800*800*4))<<std::endl;
 
 	VisualTur->updateVisibleCubes(5.0, screenG);
 
-	cudaMemcpy((void*) screenG, (const void*) screenG, sizeof(float)*800*800*4, cudaMemcpyDeviceToHost);
+	std::cerr<<"Retrieve screen from GPU: "<< cudaGetErrorString(cudaMemcpy((void*) screenC, (const void*) screenG, sizeof(float)*800*800*4, cudaMemcpyDeviceToHost))<<std::endl;
 
 	//FIBITMAP *img = FreeImage_ConvertFromRawBits((BYTE*)screenC, 800, 800, 800 * 3, 24, 0xFF0000, 0x00FF00, 0x0000FF, false);
 	//FreeImage_Save(FIF_PNG, img, "prueba.png", 0);
