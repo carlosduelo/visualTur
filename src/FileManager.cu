@@ -85,46 +85,41 @@ int FileManager::readHDF5(float * volume)
 
 void FileManager::readHDF5_Voxel_Array(int3 s, int3 e, float * data)
 {
-	herr_t	status;
-	hid_t	memspace; 
-	hsize_t	dim[3];
-	hsize_t	dimD[3];
-	hsize_t offset_out[3] 	= {0,0,0};
-	hsize_t offset[3] 	= {s.x, s.y, s.z};
-
-	dimD[0] = e.x - s.x;
-	dimD[1] = e.y - s.y;
-	dimD[2] = e.z - s.z;
-
-	if (dimD[0] != dimD[1] || dimD[0] != dimD[2] )//|| dimD[0] < 0)
-	{
-		std::cerr<<"Error: No valid dimensions reading a voxel"<<std::endl;
-		throw std::exception();
-	}
-
-	//std::cout<<"Real Size GigaVoxel "<<dimD[0]<<std::endl;
-
-	dim[0] = e.x > this->dims[0] ? this->dims[0] - s.x : e.x - s.x;
-	dim[1] = e.y > this->dims[1] ? this->dims[1] - s.y : e.y - s.y;
-	dim[2] = e.z > this->dims[2] ? this->dims[2] - s.z : e.z - s.z;
-	
-	float * aux = new float[dim[0]*dim[0]*dim[0]];
+	hsize_t dim[3] = {abs(e.x-s.x),abs(e.y-s.y),abs(e.z-s.z),};
 
 	// Container todo a 0's
-	if (s.x >= this->dims[0] || s.y >= this->dims[1] || s.z >= this->dims[2])
+	if (s.x >= (int)this->dims[0] || s.y >= (int)this->dims[1] || s.z >= (int)this->dims[2] || e.x < 0 || e.y < 0 || e.z < 0)
 	{
-		for(int i=0; i<(dimD[0]*dimD[0]*dimD[0]); i++)
+		std::cerr<<"Warning: reading cube outsite the volume"<<std::endl;
+		#if 0
+		std::cout<<this->dims[0]<<" "<<this->dims[1]<<" "<<this->dims[2]<<std::endl;
+		std::cout<<s.x<<" "<<s.y<<" "<<s.z<<std::endl;
+		std::cout<<e.x<<" "<<e.y<<" "<<e.z<<std::endl;
+		#endif
+		for(int i=0; i<(dim[0]*dim[1]*dim[2]); i++)
 			data[i] = 0.0;
 		return;
 	}
 
-	//std::cout<<sx<<","<<sy<<","<<sz<<","<<ex<<","<<ey<<","<<ez<<std::endl;
-	//std::cout<<sx<<","<<sy<<","<<sz<<","<<dim[0]<<","<<dim[1]<<","<<dim[2]<<std::endl;
+	herr_t	status;
+	hid_t	memspace; 
+	hsize_t offset_out[3] 	= {0,0,0};
+	hsize_t offset[3] 	= {s.x < 0 ? 0 : s.x, s.y < 0 ? 0 : s.y, s.z < 0 ? 0 : s.z};
+	hsize_t dimR[3]		= {e.x > this->dims[0] ? this->dims[0] - offset[0] : e.x - offset[0],
+				   e.y > this->dims[1] ? this->dims[1] - offset[1] : e.y - offset[1],
+				   e.z > this->dims[2] ? this->dims[2] - offset[2] : e.z - offset[2]};
+
+	float * aux = new float[dimR[0]*dimR[1]*dimR[2]];
+
+	#if 0
+	std::cout<<"--"<<offset[0]<<" "<<offset[1]<<" "<<offset[2]<<std::endl;
+	std::cout<<"--"<<dimR[0]<<" "<<dimR[1]<<" "<<dimR[2]<<std::endl;
+	#endif
 
 	/* 
 	* Define hyperslab in the dataset. 
 	*/
-	if ((status = H5Sselect_hyperslab(spaceid, H5S_SELECT_SET, offset, NULL, dim, NULL)) < 0)
+	if ((status = H5Sselect_hyperslab(spaceid, H5S_SELECT_SET, offset, NULL, dimR, NULL)) < 0)
 	{
 		std::cerr<<WHERESTR<<" defining hyperslab in the dataset"<<std::endl;
 		return;
@@ -133,7 +128,7 @@ void FileManager::readHDF5_Voxel_Array(int3 s, int3 e, float * data)
 	/*
 	* Define the memory dataspace.
 	*/
-	if ((memspace = H5Screate_simple(3, dim, NULL)) < 0)
+	if ((memspace = H5Screate_simple(3, dimR, NULL)) < 0)
 	{
 		std::cerr<<WHERESTR<<" defining the memory dataspace"<<std::endl;
 		return; 
@@ -143,7 +138,7 @@ void FileManager::readHDF5_Voxel_Array(int3 s, int3 e, float * data)
 	/* 
 	* Define memory hyperslab. 
 	*/
-	if ((status = H5Sselect_hyperslab(memspace, H5S_SELECT_SET, offset_out, NULL, dim, NULL)) < 0)
+	if ((status = H5Sselect_hyperslab(memspace, H5S_SELECT_SET, offset_out, NULL, dimR, NULL)) < 0)
 	{
 		std::cerr<<WHERESTR<<" defining the memory hyperslab"<<std::endl;
 		return;
@@ -159,16 +154,30 @@ void FileManager::readHDF5_Voxel_Array(int3 s, int3 e, float * data)
 		return;
 	}
 
+	hsize_t dimS[3] = {s.x >= 0 ? 0 : abs(s.x), s.y >= 0 ? 0 : abs(s.y), s.z >= 0 ? 0 : abs(s.z)};
+	hsize_t dimI[3] = {dimS[0]+dimR[0], dimS[1]+dimR[1], dimS[2]+dimR[2]};
 
-	for(unsigned int i=0; i<dim[0]; i++)
-		for(unsigned int j=0; j<dim[1]; j++)
-			for(unsigned int k=0; k<dim[2]; k++)
-				data[k+j*dimD[0]+i*dimD[0]*dimD[0]] = aux[k+j*dim[2]+i*dim[1]*dim[2]];
+	#if 0
+	std::cout<<dimS[0]<<" "<<dimS[1]<<" "<<dimS[2]<<std::endl;
+	std::cout<<dimR[0]<<" "<<dimR[1]<<" "<<dimR[2]<<std::endl;
+	std::cout<<dim[0]<<" "<<dim[1]<<" "<<dim[2]<<std::endl;
+	#endif
+
+	for(unsigned int i=0; i<dimS[0]; i++)
+		for(unsigned int j=0; j<dimS[1]; j++)
+			for(unsigned int k=0; k<dimS[2]; k++)
+				data[k+j*dim[2]+i*dim[2]*dim[1]] = 0.0; 
+
+
+	for(unsigned int i=dimS[0]; i<dimI[0]; i++)
+		for(unsigned int j=dimS[1]; j<dimI[1]; j++)
+			for(unsigned int k=dimS[2]; k<dimI[2]; k++)
+				data[k+j*dim[2]+i*dim[2]*dim[1]] = aux[(k-dimS[0])+(j-dimS[1])*dimR[2]+(i-dimS[0])*dimR[1]*dimR[2]];
 		
-	for(unsigned int i=dim[0]; i<dimD[0]; i++)
-		for(unsigned int j=dim[1]; j<dimD[0]; j++)
-			for(unsigned int k=dim[2]; k<dimD[0]; k++)
-				data[k+j*dimD[0]+i*dimD[0]*dimD[0]] = 0.0; 
+	for(unsigned int i=dimI[0]; i<dim[0]; i++)
+		for(unsigned int j=dimI[1]; j<dim[0]; j++)
+			for(unsigned int k=dimI[2]; k<dim[0]; k++)
+				data[k+j*dim[2]+i*dim[2]*dim[1]] = 0.0; 
 		
 	if ((status = H5Sclose(memspace)) < 0)
 	{
