@@ -87,14 +87,9 @@ __device__ float getElementInterpolate(float3 pos, float * data, int3 minBox, in
 {
 	float3 posR = make_float3(pos.x - minBox.x, pos.y -minBox.y, pos.z - minBox.z);
 
-	#if 0
-	int x0 = posR.x < 0.0f ? 0 : (posR.x>dim.x-1 ? maxBox.x-2 : posR.x);
-	int y0 = posR.y < 0.0f ? 0 : (posR.y>dim.y-1 ? maxBox.y-2 : posR.y);
-	int z0 = posR.z < 0.0f ? 0 : (posR.z>dim.z-1 ? maxBox.z-2 : posR.z);
-	#endif
-	int x0 = posR.x;
-	int y0 = posR.y;
-	int z0 = posR.z;
+	int x0 = posR.x < 0.0f ? 0 : (posR.x>=dim.x-1 ? dim.x-2 : posR.x);
+	int y0 = posR.y < 0.0f ? 0 : (posR.y>=dim.y-1 ? dim.y-2 : posR.y);
+	int z0 = posR.z < 0.0f ? 0 : (posR.z>=dim.z-1 ? dim.z-2 : posR.z);
 	int x1 = x0 + 1;
 	int y1 = y0 + 1;
 	int z1 = z0 + 1;
@@ -131,7 +126,7 @@ __global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3
 {
 	unsigned int id = blockIdx.y * blockDim.x * gridDim.y + blockIdx.x * blockDim.x +threadIdx.x;
 
-	if (id < (W*H))
+	if (cube[id].id != 0 && id < (W*H))
 	{
 		float tnear;
 		float tfar;
@@ -142,8 +137,9 @@ __global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3
 		if  (_cuda_RayAABB(origin, rays[id],  &tnear, &tfar, minBox, maxBox))
 		{
 			// To ray caster is needed bigger cube, so add cube inc
+			minBox -= cubeInc;
 			maxBox = dimCube + 2*cubeInc;
-			float * data = cube[id].data;
+			//float * cubeD = cube[id].data;
 			float3 Xnear = origin + tnear * rays[id];
 			float3 Xfar  = Xnear;
 			float3 Xnew  = Xnear;
@@ -159,12 +155,12 @@ __global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3
 				if (primera)
 				{
 					primera = false;
-					ant = getElementInterpolate(Xnear, data, minBox, maxBox);
+					ant = getElementInterpolate(Xnear, cube[id].data, minBox, maxBox);
 					Xfar = Xnear;
 				}
 				else
 				{
-					sig = getElementInterpolate(Xnear, data, minBox, maxBox);
+					sig = getElementInterpolate(Xnear, cube[id].data, minBox, maxBox);
 					if (( ((iso-ant)<0.0) && ((iso-sig)<0.0)) || ( ((iso-ant)>0.0) && ((iso-sig)>0.0)))
 					{
 						ant = sig;
@@ -178,7 +174,7 @@ __global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3
 						for(int k = 0; k<5;k++) // XXX Cuanto más grande mejor debería ser el renderizado
 						{
 							Xnew = (Xfar - Xnear)*((iso-sig)/(ant-sig))+Xnear;
-							valueE = getElementInterpolate(Xnew, data, minBox, maxBox);
+							valueE = getElementInterpolate(Xnew, cube[id].data, minBox, maxBox);
 							if (valueE>iso)
 								Xnear=Xnew;
 							else
@@ -199,7 +195,7 @@ __global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3
 			if (hit)
 			{
 				#if 0	
-				float3 n = getNormal(Xnew, data, minBox,  maxBox);
+				float3 n = getNormal(Xnew, cube[id].data, minBox,  maxBox);
 				float3 l = Xnew - ligth;
 				normalize(Xnew);	
 				float3 v = Xnew - origin;

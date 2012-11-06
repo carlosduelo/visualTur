@@ -29,9 +29,9 @@ int main(int argc, char ** argv)
 
 	fileManager->readHDF5_Voxel_Array(cero, dimI, data1);
 	fileManager->readHDF5_Voxel_Array(cero-offsetI,dimI-offsetI, data2);
-	for(unsigned int i=0; i<dim-offset; i++)
-		for(unsigned int j=0; j<dim-offset; j++)
-			for(unsigned int k=0; k<dim-offset; k++)
+	for(int i=0; i<dim-offset; i++)
+		for(int j=0; j<dim-offset; j++)
+			for(int k=0; k<dim-offset; k++)
 			{
 				if (data1[k+j*dim+i*dim*dim] != data2[(k+offset)+(j+offset)*dim+(i+offset)*dim*dim])
 					std::cout<<"Error"<<std::endl;
@@ -39,9 +39,9 @@ int main(int argc, char ** argv)
 
 	fileManager->readHDF5_Voxel_Array(start2, dimM, data1);
 	fileManager->readHDF5_Voxel_Array(start2+offsetI,dimM+offsetI, data2);
-	for(unsigned int i=0; i<dim-offset; i++)
-		for(unsigned int j=0; j<dim-offset; j++)
-			for(unsigned int k=0; k<dim-offset; k++)
+	for(int i=0; i<dim-offset; i++)
+		for(int j=0; j<dim-offset; j++)
+			for(int k=0; k<dim-offset; k++)
 			{
 				if (data1[(k+offset)+(j+offset)*dim+(i+offset)*dim*dim] != data2[k+j*dim+i*dim*dim])
 					std::cout<<"Error"<<std::endl;
