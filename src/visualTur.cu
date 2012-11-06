@@ -125,5 +125,7 @@ void visualTur::updateVisibleCubes(int level, float * pixelBuffer)
 
 	cache->updateCache(visibleCubesCPU, camera->get_numRays(), octree->getnLevels());
 
+	std::cerr<<"Coping visibleCubes to GPU: "<<cudaGetErrorString(cudaMemcpy((void*) visibleCubesGPU, (const void*) visibleCubesCPU, camera->get_numRays()*sizeof(visibleCube_t), cudaMemcpyHostToDevice))<<std::endl;
+
 	raycaster->render(camera, level, octree->getnLevels(), visibleCubesGPU, cache->get_cubeDim(), make_int3(cache->get_cubeInc(),cache->get_cubeInc(),cache->get_cubeInc()), pixelBuffer); 
 }

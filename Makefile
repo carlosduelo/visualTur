@@ -1,6 +1,6 @@
 NVCC=nvcc
 OPT=-O0
-CUDACP=sm_13
+CUDACP=sm_20
 CFLAGS=$(OPT) -g -Wall
 NFLAGS=-G $(OPT) -arch=$(CUDACP) -Xcompiler '$(CFLAGS)'
 INCLUDE=-Iinc/

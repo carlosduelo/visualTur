@@ -78,30 +78,37 @@ inline __device__ bool _cuda_RayAABB(float3 origin, float3 dir,  float * tnear, 
 
 }
 
-inline __device__ float getElement(int x, int y, int z, float * data, int3 minBox, int3 maxBox)
+inline __device__ float getElement(int x, int y, int z, float * data, int3 dim)
 {
-	return data[posToIndex(x,y,z,maxBox.x)]; 
+	return data[posToIndex(x,y,z,dim.x)]; 
 }
 
-__device__ float getElementInterpolate(float3 pos, float * data, int3 minBox, int3 maxBox)
+__device__ float getElementInterpolate(float3 pos, float * data, int3 minBox, int3 dim)
 {
-	int x0 = pos.x < minBox.x ? minBox.x : (pos.x>maxBox.x-1 ? maxBox.x-2 : pos.x);
-	int y0 = pos.y < minBox.y ? minBox.y : (pos.y>maxBox.y-1 ? maxBox.y-2 : pos.y);
-	int z0 = pos.z < minBox.z ? minBox.z : (pos.z>maxBox.z-1 ? maxBox.z-2 : pos.z);
+	float3 posR = make_float3(pos.x - minBox.x, pos.y -minBox.y, pos.z - minBox.z);
+
+	#if 0
+	int x0 = posR.x < 0.0f ? 0 : (posR.x>dim.x-1 ? maxBox.x-2 : posR.x);
+	int y0 = posR.y < 0.0f ? 0 : (posR.y>dim.y-1 ? maxBox.y-2 : posR.y);
+	int z0 = posR.z < 0.0f ? 0 : (posR.z>dim.z-1 ? maxBox.z-2 : posR.z);
+	#endif
+	int x0 = posR.x;
+	int y0 = posR.y;
+	int z0 = posR.z;
 	int x1 = x0 + 1;
 	int y1 = y0 + 1;
 	int z1 = z0 + 1;
 
-	float p000 = getElement(x0,y0,z1,data,minBox,maxBox);
-	float p001 = getElement(x0,y1,z1,data,minBox,maxBox);
-	float p010 = getElement(x0,y0,z0,data,minBox,maxBox);
-	float p011 = getElement(x0,y1,z0,data,minBox,maxBox);
-	float p100 = getElement(x1,y0,z1,data,minBox,maxBox);
-	float p101 = getElement(x1,y1,z1,data,minBox,maxBox);
-	float p110 = getElement(x1,y0,z0,data,minBox,maxBox);
-	float p111 = getElement(x1,y1,z0,data,minBox,maxBox);
+	float p000 = getElement(x0,y0,z1,data,dim);
+	float p001 = getElement(x0,y1,z1,data,dim);
+	float p010 = getElement(x0,y0,z0,data,dim);
+	float p011 = getElement(x0,y1,z0,data,dim);
+	float p100 = getElement(x1,y0,z1,data,dim);
+	float p101 = getElement(x1,y1,z1,data,dim);
+	float p110 = getElement(x1,y0,z0,data,dim);
+	float p111 = getElement(x1,y1,z0,data,dim);
 
-	float3 pi = make_float3(pos.x-(float)x0, pos.y-(float)y0, pos.z-(float)z0);
+	float3 pi = make_float3(posR.x-(float)x0, posR.y-(float)y0, posR.z-(float)z0);
 
 	return  p000 * (1.0-pi.x) * (1.0-pi.y) * (1.0-pi.z) +       \
 		p001 * (1.0-pi.x) * (1.0-pi.y) * pi.z       +       \
@@ -135,8 +142,7 @@ __global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3
 		if  (_cuda_RayAABB(origin, rays[id],  &tnear, &tfar, minBox, maxBox))
 		{
 			// To ray caster is needed bigger cube, so add cube inc
-			minBox -= cubeInc;
-			maxBox += cubeInc;
+			maxBox = dimCube + 2*cubeInc;
 			float * data = cube[id].data;
 			float3 Xnear = origin + tnear * rays[id];
 			float3 Xfar  = Xnear;
