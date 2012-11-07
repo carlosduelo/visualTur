@@ -627,108 +627,112 @@ __device__ void _cuda_getFirtsVoxel(index_node_t ** octree, int * sizes, int nLe
 	index_node_t *	stackIndex = &stackIndexShared[threadIdx.x][0];
 	int	     *	stackLevel = &stackLevelShared[threadIdx.x][0];
 */	
-	stackActual++;
-	stackIndex[0] = 1;
-	stackLevel[0] = 0;
-	int currentLevel = 0;
-	index_node_t current = 1;
-	index_node_t children[8];
-	float		tnears[8];
-	float		tfars[8];
-	bool		nextNode = indexNode->id == 0 ? true : false;
 
-	while(1)
+	if (!indexNode->hitRayCasting)
 	{
+		stackActual++;
+		stackIndex[0] = 1;
+		stackLevel[0] = 0;
+		int currentLevel = 0;
+		index_node_t current = 1;
+		index_node_t children[8];
+		float		tnears[8];
+		float		tfars[8];
+		bool		nextNode = indexNode->id == 0 ? true : false;
 
-		if (stackActual < 0)
+		while(1)
 		{
-			indexNode->id = 0;
-			return;
-			//end = true;
-		}
-		else
-		{
-			minBox = _cuda_updateCoordinates(nLevels, currentLevel, current, stackLevel[stackActual], stackIndex[stackActual], minBox);
-			/*
-			int3 test = _cuda_getMinBoxIndex2(stackIndex[stackActual], stackLevel[stackActual], nLevels);
-			if (minBox.x!=test.x || minBox.y != test.y || minBox.z!=test.z)
+
+			if (stackActual < 0)
 			{
-				printf("%lld %d %lld %d %d %d %d - %d %d %d\n",current,currentLevel, stackIndex[stackActual], stackLevel[stackActual], test.x, test.y,test.z, minBox.x, minBox.y, minBox.z);
+				indexNode->id = 0;
 				return;
-			}
-			*/
-			current = stackIndex[stackActual];
-			currentLevel 	= stackLevel[stackActual];
-			stackActual--;
-			//int currentLevel 	= _cuda_getIndexLevel(current); 
-	
-			//int nValid  = _cuda_searchChildrenValidAndHit(octree[currentLevel+1], sizes[currentLevel+1], origin, ray, current, children, tnears, tfars, nLevels);
-			int nValid  = _cuda_searchChildrenValidAndHit2(octree[currentLevel+1], sizes[currentLevel+1], origin, ray, current, children, tnears, tfars, nLevels, currentLevel+1, minBox);
-			// Sort the list mayor to minor
-			int n = nValid;
-			while(n != 0)
-			{
-				int newn = 0;
-				#pragma unroll
-				for(int id=1; id<nValid; id++)
-				{
-					if (tnears[id-1] > tnears[id])
-					{
-						index_node_t auxID = children[id];
-						children[id] = children[id-1];
-						children[id-1] = auxID;
-
-						float aux = tnears[id];
-						tnears[id] = tnears[id-1];
-						tnears[id-1] = aux;
-
-						aux = tfars[id];
-						tfars[id] = tfars[id-1];
-						tfars[id-1] = aux;
-
-						newn=id;
-					}
-					else if (tnears[id-1] == tnears[id] && tfars[id-1] > tfars[id])
-					{
-						index_node_t auxID = children[id];
-						children[id] = children[id-1];
-						children[id-1] = auxID;
-
-						float aux = tnears[id];
-						tnears[id] = tnears[id-1];
-						tnears[id-1] = aux;
-
-						aux = tfars[id];
-						tfars[id] = tfars[id-1];
-						tfars[id-1] = aux;
-
-						newn=id;
-					}
-				}
-				n = newn;
-			}
-			if (nValid > 0 && finalLevel == (currentLevel+1))
-			{
-				for(int i=0; i<nValid; i++)
-				{
-					if (nextNode)
-					{
-						indexNode->id = children[i];
-						return;
-					}
-					else if (indexNode->id == children[i])
-					{
-						nextNode = true;
-					}
-				}
+				//end = true;
 			}
 			else
-			{	
-				for(int i=nValid-1; i>=0; i--)
+			{
+				minBox = _cuda_updateCoordinates(nLevels, currentLevel, current, stackLevel[stackActual], stackIndex[stackActual], minBox);
+				/*
+				int3 test = _cuda_getMinBoxIndex2(stackIndex[stackActual], stackLevel[stackActual], nLevels);
+				if (minBox.x!=test.x || minBox.y != test.y || minBox.z!=test.z)
 				{
-					stackActual++;
-					stackIndex[stackActual] = children[i];
-					stackLevel[stackActual] = currentLevel+1;
+					printf("%lld %d %lld %d %d %d %d - %d %d %d\n",current,currentLevel, stackIndex[stackActual], stackLevel[stackActual], test.x, test.y,test.z, minBox.x, minBox.y, minBox.z);
+					return;
+				}
+				*/
+				current = stackIndex[stackActual];
+				currentLevel 	= stackLevel[stackActual];
+				stackActual--;
+				//int currentLevel 	= _cuda_getIndexLevel(current); 
+		
+				//int nValid  = _cuda_searchChildrenValidAndHit(octree[currentLevel+1], sizes[currentLevel+1], origin, ray, current, children, tnears, tfars, nLevels);
+				int nValid  = _cuda_searchChildrenValidAndHit2(octree[currentLevel+1], sizes[currentLevel+1], origin, ray, current, children, tnears, tfars, nLevels, currentLevel+1, minBox);
+				// Sort the list mayor to minor
+				int n = nValid;
+				while(n != 0)
+				{
+					int newn = 0;
+					#pragma unroll
+					for(int id=1; id<nValid; id++)
+					{
+						if (tnears[id-1] > tnears[id])
+						{
+							index_node_t auxID = children[id];
+							children[id] = children[id-1];
+							children[id-1] = auxID;
+
+							float aux = tnears[id];
+							tnears[id] = tnears[id-1];
+							tnears[id-1] = aux;
+
+							aux = tfars[id];
+							tfars[id] = tfars[id-1];
+							tfars[id-1] = aux;
+
+							newn=id;
+						}
+						else if (tnears[id-1] == tnears[id] && tfars[id-1] > tfars[id])
+						{
+							index_node_t auxID = children[id];
+							children[id] = children[id-1];
+							children[id-1] = auxID;
+
+							float aux = tnears[id];
+							tnears[id] = tnears[id-1];
+							tnears[id-1] = aux;
+
+							aux = tfars[id];
+							tfars[id] = tfars[id-1];
+							tfars[id-1] = aux;
+
+							newn=id;
+						}
+					}
+					n = newn;
+				}
+				if (nValid > 0 && finalLevel == (currentLevel+1))
+				{
+					for(int i=0; i<nValid; i++)
+					{
+						if (nextNode)
+						{
+							indexNode->id = children[i];
+							return;
+						}
+						else if (indexNode->id == children[i])
+						{
+							nextNode = true;
+						}
+					}
+				}
+				else
+				{	
+					for(int i=nValid-1; i>=0; i--)
+					{
+						stackActual++;
+						stackIndex[stackActual] = children[i];
+						stackLevel[stackActual] = currentLevel+1;
+					}
 				}
 			}
 		}

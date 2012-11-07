@@ -40,6 +40,7 @@ void visualTur::resetVisibleCubes()
 	{
 		visibleCubesCPU[i].id = 0;
 		visibleCubesCPU[i].data = 0;
+		visibleCubesCPU[i].hitRayCasting= false;
 	}
 	std::cerr<<"Coping visibleCubes CPU to GPU: "<< cudaGetErrorString(cudaMemcpy((void*)visibleCubesGPU, (const void*)visibleCubesCPU, camera->get_numRays()*sizeof(visibleCube_t), cudaMemcpyHostToDevice))<<std::endl;
 
@@ -85,30 +86,37 @@ void visualTur::changeCacheParameters(int nE, int3 cDim, int cInc)
 void	visualTur::camera_Move(float3 Direction)
 {
 	camera->Move(Direction);
+	resetVisibleCubes();
 }
 void	visualTur::camera_RotateX(float Angle)
 {
 	camera->RotateX(Angle);
+	resetVisibleCubes();
 }
 void	visualTur::camera_RotateY(float Angle)
 {
 	camera->RotateY(Angle);
+	resetVisibleCubes();
 }
 void	visualTur::camera_RotateZ(float Angle)
 {
 	camera->RotateZ(Angle);
+	resetVisibleCubes();
 }
 void	visualTur::camera_MoveForward(float Distance)
 {
 	camera->MoveForward(Distance);
+	resetVisibleCubes();
 }
 void	visualTur::camera_MoveUpward(float Distance)
 {
 	camera->MoveUpward(Distance);
+	resetVisibleCubes();
 }
 void	visualTur::camera_StrafeRight(float Distance)
 {
 	camera->StrafeRight(Distance);
+	resetVisibleCubes();
 }
 
 void visualTur::updateVisibleCubes(int level, float * pixelBuffer)

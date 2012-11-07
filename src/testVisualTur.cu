@@ -63,7 +63,7 @@ int main(int argc, char ** argv)
 	std::cerr<<"Cuda mem set: "<<cudaGetErrorString(cudaMemset((void *)screenG,0,sizeof(float)*800*800*4))<<std::endl;		
 
 
-	for(int it=0; it<10; it++)
+	for(int it=0; it<25; it++)
 	{
 		VisualTur->updateVisibleCubes(5, screenG);
 

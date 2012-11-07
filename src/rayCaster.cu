@@ -218,7 +218,7 @@ __global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3
 			screen[tid*4+1] = Xnew.y/512.0;// * lambertTerm) + (0.2 * powf(rv,8.0));
 			screen[tid*4+2] = Xnew.z/512.0;// * lambertTerm) + (0.1 * powf(rv,8.0));
 			screen[tid*4+3] = 1.0f;
-			cube[tid].id = 0;
+			cube[tid].hitRayCasting = true;
 		}
 		else
 		{
@@ -226,6 +226,7 @@ __global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3
 			screen[tid*4+1] = 0.0f; 
 			screen[tid*4+2] = 0.0f; 
 			screen[tid*4+3] = 1.0f; 
+			cube[tid].hitRayCasting = false;
 		}
 	}
 }
