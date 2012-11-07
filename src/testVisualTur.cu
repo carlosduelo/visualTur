@@ -3,6 +3,7 @@
 #include <cuda_runtime.h>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include "stdlib.h"
 
 int main(int argc, char ** argv)
@@ -43,28 +44,58 @@ int main(int argc, char ** argv)
 
 	float * screenG = 0;
 	float * screenC = new float[800*800*4];
-	std::cerr<<"Allocating memory octree CUDA screen: "<< cudaGetErrorString(cudaMalloc((void**)&screenG, sizeof(float)*800*800*4))<<std::endl;
 
-	VisualTur->updateVisibleCubes(5, screenG);
-
-	std::cerr<<"Retrieve screen from GPU: "<< cudaGetErrorString(cudaMemcpy((void*) screenC, (const void*) screenG, sizeof(float)*800*800*4, cudaMemcpyDeviceToHost))<<std::endl;
-
-	unsigned char * picture = new unsigned char[800*800*3];
 	for(int i=0; i<800; i++)
 		for(int j=0; j<800; j++)
 		{
-			picture[i*3] = screenC[i*4]*255;
-			picture[i*3+1] = screenC[i*4+1]*255;
-			picture[i*3+2] = screenC[i*4+2]*255;
+			int id = i*800 + j;
+			screenC[id*4] = 0.0;
+			screenC[id*4+1] = 0.0f;
+			screenC[id*4+2]= 0.0f;
+			screenC[id*4+3]= 0.0f;
 		} 
+	
+	FIBITMAP * bitmap = FreeImage_Allocate(800,800,24);
+	RGBQUAD color;
 
-	FIBITMAP *img = FreeImage_ConvertFromRawBits(picture, 800, 800, 800 * 3, 24, 0xFF0000, 0x00FF00, 0x0000FF, false);
-	FreeImage_Save(FIF_PNG, img, "prueba.png", 0);
+	std::cerr<<"Allocating memory octree CUDA screen: "<< cudaGetErrorString(cudaMalloc((void**)&screenG, sizeof(float)*800*800*4))<<std::endl;
 
-	FreeImage_DeInitialise();
+	std::cerr<<"Cuda mem set: "<<cudaGetErrorString(cudaMemset((void *)screenG,0,sizeof(float)*800*800*4))<<std::endl;		
+
+
+	for(int it=0; it<10; it++)
+	{
+		VisualTur->updateVisibleCubes(5, screenG);
+
+		std::cerr<<"Retrieve screen from GPU: "<< cudaGetErrorString(cudaMemcpy((void*) screenC, (const void*) screenG, sizeof(float)*800*800*4, cudaMemcpyDeviceToHost))<<std::endl;
+
+		int hits =0;
+		for(int i=0; i<800; i++)
+			for(int j=0; j<800; j++)
+			{
+				int id = i*800 + j;
+				if (screenC[id*4]!=0.0f || screenC[id*4+1]!=0.0f || screenC[id*4+2]!=0.0f)
+					hits++;
+				/*
+				picture[i*3] = screenC[i*4]*255;
+				picture[i*3+1] = screenC[i*4+1]*255;
+				picture[i*3+2] = screenC[i*4+2]*255;
+				color.rgbRed = 0;
+				color.rgbGreen = (double)i/800*255.0;
+				color.rgbBlue = (double)j/800*255.0;
+				*/
+				color.rgbRed = screenC[id*4]*255;
+				color.rgbGreen = screenC[id*4+1]*255;
+				color.rgbBlue = screenC[id*4+2]*255;
+				FreeImage_SetPixelColor(bitmap, i, j, &color);
+			} 
+		std::cout<<"--->"<<hits<<std::endl;
+		std::stringstream name;
+		name<<"prueba"<<it<<".png";
+		FreeImage_Save(FIF_PNG, bitmap, name.str().c_str(), 0);
+	}
 
 	cudaFree(screenG);
 	delete[] screenC;
-	delete[] picture;
-	delete VisualTur;
+	FreeImage_DeInitialise();
 }
