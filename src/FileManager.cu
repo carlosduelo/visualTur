@@ -96,7 +96,7 @@ void FileManager::readHDF5_Voxel_Array(int3 s, int3 e, float * data)
 		std::cout<<s.x<<" "<<s.y<<" "<<s.z<<std::endl;
 		std::cout<<e.x<<" "<<e.y<<" "<<e.z<<std::endl;
 		#endif
-		for(int i=0; i<(dim[0]*dim[1]*dim[2]); i++)
+		for(unsigned int i=0; i<(dim[0]*dim[1]*dim[2]); i++)
 			data[i] = 0.0;
 		return;
 	}
@@ -105,9 +105,9 @@ void FileManager::readHDF5_Voxel_Array(int3 s, int3 e, float * data)
 	hid_t	memspace; 
 	hsize_t offset_out[3] 	= {0,0,0};
 	hsize_t offset[3] 	= {s.x < 0 ? 0 : s.x, s.y < 0 ? 0 : s.y, s.z < 0 ? 0 : s.z};
-	hsize_t dimR[3]		= {e.x > this->dims[0] ? this->dims[0] - offset[0] : e.x - offset[0],
-				   e.y > this->dims[1] ? this->dims[1] - offset[1] : e.y - offset[1],
-				   e.z > this->dims[2] ? this->dims[2] - offset[2] : e.z - offset[2]};
+	hsize_t dimR[3]		= {e.x > (int)this->dims[0] ? this->dims[0] - offset[0] : e.x - offset[0],
+				   e.y > (int)this->dims[1] ? this->dims[1] - offset[1] : e.y - offset[1],
+				   e.z > (int)this->dims[2] ? this->dims[2] - offset[2] : e.z - offset[2]};
 
 	float * aux = new float[dimR[0]*dimR[1]*dimR[2]];
 

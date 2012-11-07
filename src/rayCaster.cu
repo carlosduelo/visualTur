@@ -124,23 +124,23 @@ inline __device__ float3 getNormal(float3 pos, float * data, int3 minBox, int3 m
 
 __global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3 * rays, float iso, visibleCube_t * cube, int3 dimCube, int3 cubeInc, int level, int nLevel, float * screen)
 {
-	unsigned int id = blockIdx.y * blockDim.x * gridDim.y + blockIdx.x * blockDim.x +threadIdx.x;
+	unsigned int tid = blockIdx.y * blockDim.x * gridDim.y + blockIdx.x * blockDim.x +threadIdx.x;
 
-	if (cube[id].id != 0 && id < (W*H))
+	if (tid < (W*H) && cube[tid].id != 0 )
 	{
 		float tnear;
 		float tfar;
 		// To do test intersection real cube position
-		int3 minBox = getMinBoxIndex2(cube[id].id, level, nLevel);
+		int3 minBox = getMinBoxIndex2(cube[tid].id, level, nLevel);
 		int3 maxBox = minBox + dimCube;
 
-		if  (_cuda_RayAABB(origin, rays[id],  &tnear, &tfar, minBox, maxBox))
+		if  (_cuda_RayAABB(origin, rays[tid],  &tnear, &tfar, minBox, maxBox))
 		{
 			// To ray caster is needed bigger cube, so add cube inc
 			minBox -= cubeInc;
 			maxBox = dimCube + 2*cubeInc;
-			//float * cubeD = cube[id].data;
-			float3 Xnear = origin + tnear * rays[id];
+			//float * cubeD = cube[tid].data;
+			float3 Xnear = origin + tnear * rays[tid];
 			float3 Xfar  = Xnear;
 			float3 Xnew  = Xnear;
 			bool 				primera 	= true;
@@ -155,12 +155,12 @@ __global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3
 				if (primera)
 				{
 					primera = false;
-					ant = getElementInterpolate(Xnear, cube[id].data, minBox, maxBox);
+					ant = getElementInterpolate(Xnear, cube[tid].data, minBox, maxBox);
 					Xfar = Xnear;
 				}
 				else
 				{
-					sig = getElementInterpolate(Xnear, cube[id].data, minBox, maxBox);
+					sig = getElementInterpolate(Xnear, cube[tid].data, minBox, maxBox);
 					if (( ((iso-ant)<0.0) && ((iso-sig)<0.0)) || ( ((iso-ant)>0.0) && ((iso-sig)>0.0)))
 					{
 						ant = sig;
@@ -188,14 +188,14 @@ __global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3
 					
 				}
 
-				Xnear += (0.1 * rays[id]);
+				Xnear += (0.2 * rays[tid]);
 				steps++;
 			}
 
 			if (hit)
 			{
 				#if 0	
-				float3 n = getNormal(Xnew, cube[id].data, minBox,  maxBox);
+				float3 n = getNormal(Xnew, cube[tid].data, minBox,  maxBox);
 				float3 l = Xnew - ligth;
 				normalize(Xnew);	
 				float3 v = Xnew - origin;
@@ -203,30 +203,31 @@ __global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3
 				float nl		= n.x * l.x + n.y * l.y + n.z * l.z;	
 				float lambertTerm  	= fabsf(nl);
 				float3 r = l - 2.0 * n * nl;
-				//float rv		= r.x*rays[id].x + r.y * rays[id].y + r.z * rays[id].z; 
+				//float rv		= r.x*rays[tid].x + r.y * rays[tid].y + r.z * rays[tid].z; 
 				float rv		= r.x*v.x + r.y*v.y + r.z*v.z; 
 			
 				#endif
-				screen[id*4]   = ((Xnew.x/maxBox.x ));// * lambertTerm) + (0.2 * powf(rv,8.0));
-				screen[id*4+1] = ((Xnew.y/maxBox.y ));// * lambertTerm) + (0.2 * powf(rv,8.0));
-				screen[id*4+2] = ((Xnew.z/maxBox.z ));// * lambertTerm) + (0.1 * powf(rv,8.0));
-				screen[id*4+3] = 1.0f;
+				screen[tid*4]   = 0.3f;// * lambertTerm) + (0.2 * powf(rv,8.0));
+				screen[tid*4+1] = 0.3f;// * lambertTerm) + (0.2 * powf(rv,8.0));
+				screen[tid*4+2] = 0.3f;// * lambertTerm) + (0.1 * powf(rv,8.0));
+				screen[tid*4+3] = 1.0f;
+				cube[tid].id = 0;
 			}
 			else
 			{
-				screen[id*4] = 0.0f; 
-				screen[id*4+1] = 0.0f; 
-				screen[id*4+2] = 0.0f; 
-				screen[id*4+3] = 1.0f; 
+				screen[tid*4] = 0.0f; 
+				screen[tid*4+1] = 0.0f; 
+				screen[tid*4+2] = 0.0f; 
+				screen[tid*4+3] = 1.0f; 
 			}
 			
 		}
 		else
 		{
-			screen[id*4] = 0.0f; 
-			screen[id*4+1] = 0.0f; 
-			screen[id*4+2] = 0.0f; 
-			screen[id*4+3] = 1.0f; 
+			screen[tid*4] = 0.0f; 
+			screen[tid*4+1] = 0.0f; 
+			screen[tid*4+2] = 0.0f; 
+			screen[tid*4+3] = 1.0f; 
 		}
 	}
 }

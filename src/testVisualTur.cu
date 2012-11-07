@@ -53,7 +53,6 @@ int main(int argc, char ** argv)
 	for(int i=0; i<800; i++)
 		for(int j=0; j<800; j++)
 		{
-			//std::cout<<screenC[i*4]<<" "<<screenC[i*4+1]<<" "<<screenC[i*4+2]<<std::endl;
 			picture[i*3] = screenC[i*4]*255;
 			picture[i*3+1] = screenC[i*4+1]*255;
 			picture[i*3+2] = screenC[i*4+2]*255;

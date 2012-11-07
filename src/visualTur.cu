@@ -116,11 +116,11 @@ void visualTur::updateVisibleCubes(int level, float * pixelBuffer)
 	octree->getBoxIntersected(level, visibleCubesGPU, visibleCubesCPU);
 
 	#if 1
-	int hits = 0;
+	int hitsO = 0;
 	for(int i=0; i<camera->get_numRays(); i++)
 		if (visibleCubesCPU[i].id != 0)
-			hits++;
-	std::cout<<"Hits "<<hits<<std::endl;
+			hitsO++;
+	std::cout<<"Hits in octree "<<hitsO<<std::endl;
 	#endif
 
 	cache->updateCache(visibleCubesCPU, camera->get_numRays(), octree->getnLevels());
@@ -128,4 +128,13 @@ void visualTur::updateVisibleCubes(int level, float * pixelBuffer)
 	std::cerr<<"Coping visibleCubes to GPU: "<<cudaGetErrorString(cudaMemcpy((void*) visibleCubesGPU, (const void*) visibleCubesCPU, camera->get_numRays()*sizeof(visibleCube_t), cudaMemcpyHostToDevice))<<std::endl;
 
 	raycaster->render(camera, level, octree->getnLevels(), visibleCubesGPU, cache->get_cubeDim(), make_int3(cache->get_cubeInc(),cache->get_cubeInc(),cache->get_cubeInc()), pixelBuffer); 
+
+	#if 1
+	std::cerr<<"Coping visibleCubes to CPU: "<<cudaGetErrorString(cudaMemcpy((void*) visibleCubesCPU, (const void*) visibleCubesGPU, camera->get_numRays()*sizeof(visibleCube_t), cudaMemcpyDeviceToHost))<<std::endl;
+	int noHitsR = 0;
+	for(int i=0; i<camera->get_numRays(); i++)
+		if (visibleCubesCPU[i].id != 0)
+			noHitsR++;
+	std::cout<<"Hits in ray casting "<<hitsO - noHitsR<<std::endl;
+	#endif
 }
