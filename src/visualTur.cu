@@ -141,8 +141,8 @@ void visualTur::updateVisibleCubes(int level, float * pixelBuffer)
 	std::cerr<<"Coping visibleCubes to CPU: "<<cudaGetErrorString(cudaMemcpy((void*) visibleCubesCPU, (const void*) visibleCubesGPU, camera->get_numRays()*sizeof(visibleCube_t), cudaMemcpyDeviceToHost))<<std::endl;
 	int noHitsR = 0;
 	for(int i=0; i<camera->get_numRays(); i++)
-		if (visibleCubesCPU[i].id != 0)
+		if (visibleCubesCPU[i].hitRayCasting)
 			noHitsR++;
-	std::cout<<"Hits in ray casting "<<hitsO - noHitsR<<std::endl;
+	std::cout<<"Hits in ray casting "<<noHitsR<<std::endl;
 	#endif
 }
