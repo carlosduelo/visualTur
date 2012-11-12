@@ -56,6 +56,7 @@ __global__ void cuda_updateRays(float3 * rays, int numRayPixel, float3 up, float
 
 	int i  = blockIdx.x * blockDim.x + threadIdx.x;
 	int j  = blockIdx.y * blockDim.y + threadIdx.y;
+	//int id = j * H + i;
 	int id = i * W + j;
 
 	float ih  = h/H;

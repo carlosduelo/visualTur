@@ -40,7 +40,7 @@ void visualTur::resetVisibleCubes()
 	{
 		visibleCubesCPU[i].id = 0;
 		visibleCubesCPU[i].data = 0;
-		visibleCubesCPU[i].hitRayCasting= false;
+		visibleCubesCPU[i].state = NOCUBE;
 	}
 	std::cerr<<"Coping visibleCubes CPU to GPU: "<< cudaGetErrorString(cudaMemcpy((void*)visibleCubesGPU, (const void*)visibleCubesCPU, camera->get_numRays()*sizeof(visibleCube_t), cudaMemcpyHostToDevice))<<std::endl;
 
@@ -141,7 +141,7 @@ void visualTur::updateVisibleCubes(int level, float * pixelBuffer)
 	std::cerr<<"Coping visibleCubes to CPU: "<<cudaGetErrorString(cudaMemcpy((void*) visibleCubesCPU, (const void*) visibleCubesGPU, camera->get_numRays()*sizeof(visibleCube_t), cudaMemcpyDeviceToHost))<<std::endl;
 	int noHitsR = 0;
 	for(int i=0; i<camera->get_numRays(); i++)
-		if (visibleCubesCPU[i].hitRayCasting)
+		if (visibleCubesCPU[i].state == PAINTED)
 			noHitsR++;
 	std::cout<<"Hits in ray casting "<<noHitsR<<std::endl;
 	#endif

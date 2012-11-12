@@ -117,16 +117,17 @@ __device__ float getElementInterpolate(float3 pos, float * data, int3 minBox, in
 
 inline __device__ float3 getNormal(float3 pos, float * data, int3 minBox, int3 maxBox)
 {
-	return make_float3(	(getElementInterpolate(make_float3(pos.x-1.0f,pos.y,pos.z),data,minBox,maxBox) - getElementInterpolate(make_float3(pos.x+1.0f,pos.y,pos.z),data,minBox,maxBox))        /2.0f,
+	return normalize(make_float3(	
+				(getElementInterpolate(make_float3(pos.x-1.0f,pos.y,pos.z),data,minBox,maxBox) - getElementInterpolate(make_float3(pos.x+1.0f,pos.y,pos.z),data,minBox,maxBox))        /2.0f,
 				(getElementInterpolate(make_float3(pos.x,pos.y-1.0f,pos.z),data,minBox,maxBox) - getElementInterpolate(make_float3(pos.x,pos.y+1.0f,pos.z),data,minBox,maxBox))        /2.0f,
-			        (getElementInterpolate(make_float3(pos.x,pos.y,pos.z-1.0f),data,minBox,maxBox) - getElementInterpolate(make_float3(pos.x,pos.y,pos.z+1.0f),data,minBox,maxBox))        /2.0f);
+			        (getElementInterpolate(make_float3(pos.x,pos.y,pos.z-1.0f),data,minBox,maxBox) - getElementInterpolate(make_float3(pos.x,pos.y,pos.z+1.0f),data,minBox,maxBox))        /2.0f));
 }			
 
 __global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3 * rays, float iso, visibleCube_t * cube, int3 dimCube, int3 cubeInc, int level, int nLevel, float * screen)
 {
 	unsigned int tid = blockIdx.y * blockDim.x * gridDim.y + blockIdx.x * blockDim.x + threadIdx.x;
 
-	if (tid < (W*H))
+	if (tid < (W*H) && cube[tid].state != PAINTED)
 	{
 		float tnear;
 		float tfar;
@@ -137,8 +138,8 @@ __global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3
 		float3 Xnear;
 		float3 Xfar;
 		float3 Xnew;
-
-		if  (cube[tid].id != 0 && _cuda_RayAABB(origin, rays[tid],  &tnear, &tfar, minBox, maxBox))
+		
+		if  (cube[tid].state == CACHED && _cuda_RayAABB(origin, rays[tid],  &tnear, &tfar, minBox, maxBox))
 		{
 			// To ray caster is needed bigger cube, so add cube inc
 			minBox -= cubeInc;
@@ -173,13 +174,13 @@ __global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3
 					}
 					else
 					{
-						#if 0
+						#if 1
 						// Intersection Refinament using an iterative bisection procedure
 						float valueE = 0.0;
-						for(int k = 0; k<5;k++) // XXX Cuanto más grande mejor debería ser el renderizado
+						for(int k = 0; k<10;k++) // XXX Cuanto más grande mejor debería ser el renderizado
 						{
 							Xnew = (Xfar - Xnear)*((iso-sig)/(ant-sig))+Xnear;
-							valueE = getElementInterpolate(Xnew, cube[id].data, minBox, maxBox);
+							valueE = getElementInterpolate(Xnew, cube[tid].data, minBox, maxBox);
 							if (valueE>iso)
 								Xnear=Xnew;
 							else
@@ -200,33 +201,26 @@ __global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3
 
 		if (hit)
 		{
-			#if 0	
 			float3 n = getNormal(Xnew, cube[tid].data, minBox,  maxBox);
 			float3 l = Xnew - ligth;
-			normalize(Xnew);	
-			float3 v = Xnew - origin;
-			normalize(v);
-			float nl		= n.x * l.x + n.y * l.y + n.z * l.z;	
-			float lambertTerm  	= fabsf(nl);
-			float3 r = l - 2.0 * n * nl;
-			//float rv		= r.x*rays[tid].x + r.y * rays[tid].y + r.z * rays[tid].z; 
-			float rv		= r.x*v.x + r.y*v.y + r.z*v.z; 
-		
-			#endif
-			//printf("HIT %d\n",tid);
-			screen[tid*4]   = Xnew.x/512.0;// * lambertTerm) + (0.2 * powf(rv,8.0));
-			screen[tid*4+1] = Xnew.y/512.0;// * lambertTerm) + (0.2 * powf(rv,8.0));
-			screen[tid*4+2] = Xnew.z/512.0;// * lambertTerm) + (0.1 * powf(rv,8.0));
+			l = normalize(l);	
+			float nl = fabs(n.x*l.x + n.y*l.y + n.z*l.z);
+			screen[tid*4]   = 0.3 * nl;
+			screen[tid*4+1] = 0.4 * nl;
+			screen[tid*4+2] = 0.5 * nl;
 			screen[tid*4+3] = 1.0f;
-			cube[tid].hitRayCasting = true;
+			cube[tid].state= PAINTED;
 		}
 		else
 		{
-			screen[tid*4] = 0.0f; 
-			screen[tid*4+1] = 0.0f; 
-			screen[tid*4+2] = 0.0f; 
+			screen[tid*4] = 1.0f; 
+			screen[tid*4+1] = 1.0f; 
+			screen[tid*4+2] = 1.0f; 
 			screen[tid*4+3] = 1.0f; 
-			cube[tid].hitRayCasting = false;
+			if (cube[tid].state == NOCUBE)
+				cube[tid].state = PAINTED;
+			else
+				cube[tid].state = NOCUBE;
 		}
 	}
 }

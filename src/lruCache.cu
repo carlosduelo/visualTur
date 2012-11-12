@@ -152,7 +152,7 @@ void lruCache::updateCache(visibleCube_t * visibleCubes, int num, int nLevels)
 
 	for(int i=0; i<num; i++)
 	{
-		if (visibleCubes[i].id != 0)
+		if (visibleCubes[i].id != 0 && visibleCubes[i].state != PAINTED)
 		{
 
 			if (insertElement(visibleCubes[i].id, &pos))
@@ -164,6 +164,7 @@ void lruCache::updateCache(visibleCube_t * visibleCubes, int num, int nLevels)
 				fileManager->readHDF5_Voxel_Array(minBox, maxBox, auxData);
 
 				visibleCubes[i].data = cacheData + pos*offsetCube;
+				visibleCubes[i].state = CACHED;
 				std::cerr<<"Creating cache in GPU: "<<cudaGetErrorString(cudaMemcpy((void*) visibleCubes[i].data, (const void*) auxData, offsetCube*sizeof(float), cudaMemcpyHostToDevice))<<std::endl;
 
 				newCubes++;
@@ -171,6 +172,7 @@ void lruCache::updateCache(visibleCube_t * visibleCubes, int num, int nLevels)
 			else
 			{
 				visibleCubes[i].data = cacheData + pos*offsetCube;
+				visibleCubes[i].state = CACHED;
 			}
 		}
 	}

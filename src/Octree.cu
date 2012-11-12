@@ -628,7 +628,7 @@ __device__ void _cuda_getFirtsVoxel(index_node_t ** octree, int * sizes, int nLe
 	int	     *	stackLevel = &stackLevelShared[threadIdx.x][0];
 */	
 
-	if (!indexNode->hitRayCasting)
+	if (indexNode->state ==  NOCUBE)
 	{
 		stackActual++;
 		stackIndex[0] = 1;

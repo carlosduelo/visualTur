@@ -21,9 +21,12 @@ int main(int argc, char ** argv)
 		cudaSetDevice(device);
 	}
 
+	int W = 800;
+	int H = 800;
+
 	visualTurParams_t params;
-	params.W = 800;
-	params.H = 800;
+	params.W = W;
+	params.H = H;
 	params.fov_H = 35.0f;
 	params.fov_W = 35.0f;
 	params.distance = 50.0f;
@@ -43,10 +46,10 @@ int main(int argc, char ** argv)
 	FreeImage_Initialise();
 
 	float * screenG = 0;
-	float * screenC = new float[800*800*4];
+	float * screenC = new float[H*W*4];
 
-	for(int i=0; i<800; i++)
-		for(int j=0; j<800; j++)
+	for(int i=0; i<H; i++)
+		for(int j=0; j<W; j++)
 		{
 			int id = i*800 + j;
 			screenC[id*4] = 0.0;
@@ -55,25 +58,26 @@ int main(int argc, char ** argv)
 			screenC[id*4+3]= 0.0f;
 		} 
 	
-	FIBITMAP * bitmap = FreeImage_Allocate(800,800,24);
+	FIBITMAP * bitmap = FreeImage_Allocate(H,W,24);
 	RGBQUAD color;
 
-	std::cerr<<"Allocating memory octree CUDA screen: "<< cudaGetErrorString(cudaMalloc((void**)&screenG, sizeof(float)*800*800*4))<<std::endl;
+	std::cerr<<"Allocating memory octree CUDA screen: "<< cudaGetErrorString(cudaMalloc((void**)&screenG, sizeof(float)*H*W*4))<<std::endl;
 
-	std::cerr<<"Cuda mem set: "<<cudaGetErrorString(cudaMemset((void *)screenG,0,sizeof(float)*800*800*4))<<std::endl;		
+	std::cerr<<"Cuda mem set: "<<cudaGetErrorString(cudaMemset((void *)screenG,0,sizeof(float)*H*W*4))<<std::endl;		
 
 
 	for(int it=0; it<50; it++)
 	{
-		VisualTur->updateVisibleCubes(5, screenG);
+		//VisualTur->updateVisibleCubes(5, screenG);
+		VisualTur->updateVisibleCubes(9, screenG);
 
-		std::cerr<<"Retrieve screen from GPU: "<< cudaGetErrorString(cudaMemcpy((void*) screenC, (const void*) screenG, sizeof(float)*800*800*4, cudaMemcpyDeviceToHost))<<std::endl;
+		std::cerr<<"Retrieve screen from GPU: "<< cudaGetErrorString(cudaMemcpy((void*) screenC, (const void*) screenG, sizeof(float)*W*H*4, cudaMemcpyDeviceToHost))<<std::endl;
 
 		int hits =0;
-		for(int i=0; i<800; i++)
-			for(int j=0; j<800; j++)
+		for(int i=0; i<H; i++)
+			for(int j=0; j<W; j++)
 			{
-				int id = i*800 + j;
+				int id = i*W + j;
 				if (screenC[id*4]!=0.0f || screenC[id*4+1]!=0.0f || screenC[id*4+2]!=0.0f)
 					hits++;
 				/*
