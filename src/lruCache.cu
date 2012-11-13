@@ -15,18 +15,21 @@ LinkedList::LinkedList(int size)
 			memoryList[i].after = &memoryList[i+1];
 			memoryList[i].before = 0;
 			memoryList[i].element = i;
+			memoryList[i].cubeID = 0;
 		}
 		else if (i==size-1)
 		{
 			memoryList[i].after = 0;
 			memoryList[i].before = &memoryList[i-1];
 			memoryList[i].element = i;
+			memoryList[i].cubeID = 0;
 		}
 		else
 		{
 			memoryList[i].after = &memoryList[i+1];
 			memoryList[i].before = &memoryList[i-1];
 			memoryList[i].element = i;
+			memoryList[i].cubeID = 0;
 		}
 	}
 }
@@ -37,7 +40,7 @@ LinkedList::~LinkedList()
 }
 
 
-NodeLinkedList * LinkedList::getFromFirstPosition()
+NodeLinkedList * LinkedList::getFromFirstPosition(index_node_t newIDcube, index_node_t * removedIDcube)
 {
 	NodeLinkedList * first = list;
 
@@ -50,6 +53,8 @@ NodeLinkedList * LinkedList::getFromFirstPosition()
 	last->after = first;
 	
 	last = first;
+	*removedIDcube = last->cubeID;
+	last->cubeID = newIDcube;
 
 	return first;
 
@@ -58,7 +63,21 @@ NodeLinkedList * LinkedList::getFromFirstPosition()
 NodeLinkedList * LinkedList::moveToLastPosition(NodeLinkedList * node)
 {
 	if (node->before == 0)
-		return LinkedList::getFromFirstPosition();
+	{
+		NodeLinkedList * first = list;
+
+		list = first->after;
+		list->before = 0;
+		
+		first->after  = 0;
+		first->before = last;
+		
+		last->after = first;
+		
+		last = first;
+
+		return first;
+	}
 	else if (node->after == 0)
 	{
 		return node;
@@ -120,64 +139,6 @@ void lruCache::changeDimensionCube(int maxElements, int3 cDim, int cI)
 	std::cerr<<"Creating cache in GPU: "<<cudaGetErrorString(cudaMalloc((void**)&cacheData, numElements*offsetCube*sizeof(float)))<<std::endl;
 }
 
-#if 0
-bool lruCache::insertElement(index_node_t element, unsigned int * position)
-{
-	std::map<index_node_t, NodeLinkedList *>::iterator it;
-	it = indexStored.find(element);
-
-	if ( it == indexStored.end() ) // Not exists
-	{
-		/* Get from the queue the first element, add to hashtable (index, lastPosition) and enqueue the position */
-		NodeLinkedList * node = queuePositions->getFromFirstPosition();
-
-		*position = node->element; 
-
-		indexStored.insert(std::pair<int, NodeLinkedList *>(element, node));
-
-		return true;
-	}
-	else // Exist
-	{
-		/* If the elements is already in the cache remove from the queue and insert at the end */
-		NodeLinkedList * node = it->second;
-		*position = node->element; 
-
-		queuePositions->moveToLastPosition(node);
-
-		return false;
-	}
-}
-
-bool lruCache::insertElementCPU(index_node_t element, unsigned int * position)
-{
-	std::map<index_node_t, NodeLinkedList *>::iterator it;
-	it = indexStoredCPU.find(element);
-
-	if ( it == indexStoredCPU.end() ) // Not exists
-	{
-		/* Get from the queue the first element, add to hashtable (index, lastPosition) and enqueue the position */
-		NodeLinkedList * node = queuePositionsCPU->getFromFirstPosition();
-
-		*position = node->element; 
-
-		indexStoredCPU.insert(std::pair<int, NodeLinkedList *>(element, node));
-
-		return true;
-	}
-	else // Exist
-	{
-		/* If the elements is already in the cache remove from the queue and insert at the end */
-		NodeLinkedList * node = it->second;
-		*position = node->element; 
-
-		queuePositionsCPU->moveToLastPosition(node);
-
-		return false;
-	}
-}
-#endif
-
 void lruCache::updateCube(visibleCube_t * cube, int nLevels, int * nEinsertedCPU, int * nEinsertedGPU)
 {
 	// Update in CPU Cache
@@ -194,12 +155,15 @@ void lruCache::updateCube(visibleCube_t * cube, int nLevels, int * nEinsertedCPU
 			return;
 		}
 
+		index_node_t removedIDcube = 0;
 		/* Get from the queue the first element, add to hashtable (index, lastPosition) and enqueue the position */
-		NodeLinkedList * node = queuePositionsCPU->getFromFirstPosition();
+		NodeLinkedList * node = queuePositionsCPU->getFromFirstPosition(cube->id, &removedIDcube);
 
 		posC = node->element; 
 
 		indexStoredCPU.insert(std::pair<int, NodeLinkedList *>(cube->id, node));
+		if (removedIDcube != 0)
+			indexStoredCPU.erase(indexStoredCPU.find(removedIDcube));
 		int level = getIndexLevel(cube->id);
 		int3 coord = getMinBoxIndex2(cube->id, level, nLevels);
 		int3 minBox = coord - cubeInc;
@@ -223,15 +187,18 @@ void lruCache::updateCube(visibleCube_t * cube, int nLevels, int * nEinsertedCPU
 		if (*nEinsertedGPU > numElements)
 		{
 			cube->state = NOCACHED;
-			std::cout<<"---------------------------------------------------------------------------------->"<<std::endl;
+			//std::cout<<"---------------------------------------------------------------------------------->"<<std::endl;
 			return;
 		}
+		index_node_t removedIDcube = 0;
 		/* Get from the queue the first element, add to hashtable (index, lastPosition) and enqueue the position */
-		NodeLinkedList * node = queuePositions->getFromFirstPosition();
+		NodeLinkedList * node = queuePositions->getFromFirstPosition(cube->id, &removedIDcube);
 
 		posG = node->element; 
 
 		indexStored.insert(std::pair<int, NodeLinkedList *>(cube->id, node));
+		if (removedIDcube != 0)
+			indexStored.erase(indexStored.find(removedIDcube));
 		cube->data = cacheData + posG*offsetCube;
 		cube->state = CACHED;
 		std::cerr<<"Creating cache in GPU: "<<cudaGetErrorString(cudaMemcpy((void*) cube->data, (const void*) (cacheDataCPU + posC*offsetCube), offsetCube*sizeof(float), cudaMemcpyHostToDevice))<<std::endl;

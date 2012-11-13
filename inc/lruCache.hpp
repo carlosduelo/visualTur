@@ -17,6 +17,7 @@ class NodeLinkedList
 		NodeLinkedList * after;
 		NodeLinkedList * before;
 		unsigned int	 element;
+		index_node_t 	 cubeID;
 };
 
 class LinkedList
@@ -30,7 +31,7 @@ class LinkedList
 		~LinkedList();
 
 		/* pop_front and push_last */
-		NodeLinkedList * getFromFirstPosition();
+		NodeLinkedList * getFromFirstPosition(index_node_t newIDcube, index_node_t * removedIDcube);
 
 		NodeLinkedList * moveToLastPosition(NodeLinkedList * node);	
 };

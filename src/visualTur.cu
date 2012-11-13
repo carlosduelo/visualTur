@@ -1,6 +1,11 @@
 #include "visualTur.hpp"
+#include "cuda_help.hpp"
+#include <cuda_runtime.h>
+#include <cutil_math.h>
 #include <iostream>
 #include <fstream>
+#include <sys/time.h>
+
 
 visualTur::visualTur(visualTurParams_t initParams)
 {
@@ -33,8 +38,21 @@ visualTur::~visualTur()
 	delete		raycaster;
 }
 
+
+__global__ void resetCubes(visibleCube_t * cubes, int max)
+{
+	unsigned int tid = blockIdx.y * blockDim.x * gridDim.y + blockIdx.x * blockDim.x + threadIdx.x;
+	if (tid<max)
+	{
+		cubes[tid].id = 0;
+		cubes[tid].data = 0;
+		cubes[tid].state = NOCUBE;
+	}
+}
+
 void visualTur::resetVisibleCubes()
 {
+	#if 0
 	int max = camera->get_numRays();
 	for(int i=0; i<max; i++)
 	{
@@ -43,7 +61,11 @@ void visualTur::resetVisibleCubes()
 		visibleCubesCPU[i].state = NOCUBE;
 	}
 	std::cerr<<"Coping visibleCubes CPU to GPU: "<< cudaGetErrorString(cudaMemcpy((void*)visibleCubesGPU, (const void*)visibleCubesCPU, camera->get_numRays()*sizeof(visibleCube_t), cudaMemcpyHostToDevice))<<std::endl;
-
+	#else
+	dim3 threads = getThreads(camera->get_numRays());
+	dim3 blocks = getBlocks(camera->get_numRays());
+	resetCubes<<<blocks, threads>>>(visibleCubesGPU, camera->get_numRays());
+	#endif
 }
 
 void visualTur::changeScreen(int pW, int pH, float pfovW, float pfovH, float pDistance)
@@ -78,6 +100,7 @@ void visualTur::changeCacheParameters(int nE, int3 cDim, int cInc)
 
 	delete[]	visibleCubesCPU;
 	cudaFree(visibleCubesGPU);
+
 	visibleCubesCPU = new visibleCube_t[camera->get_numRays()];
 	std::cerr<<"Allocating memory visibleCubesGPU: "<< cudaGetErrorString(cudaMalloc((void**)&visibleCubesGPU, camera->get_numRays()*sizeof(visibleCube_t)))<<std::endl;
 	resetVisibleCubes();
@@ -121,28 +144,58 @@ void	visualTur::camera_StrafeRight(float Distance)
 
 void visualTur::updateVisibleCubes(int level, float * pixelBuffer)
 {
-	octree->getBoxIntersected(level, visibleCubesGPU, visibleCubesCPU);
+	std::cout<<"Rendering new frame"<<std::endl;
+	bool notEnd = true;
+	int iterations = 0;
+	double deltaO = 0.0;
+	double deltaC = 0.0;
+	double deltaR = 0.0;
+	while(notEnd)
+	{
+		struct timeval st, end;
+		gettimeofday(&st, NULL);
+		octree->getBoxIntersected(level, visibleCubesGPU, visibleCubesCPU);
+		gettimeofday(&end, NULL);
+		deltaO += ((end.tv_sec  - st.tv_sec) * 1000000u + end.tv_usec - st.tv_usec) / 1.e6;
 
-	#if 0
-	int hitsO = 0;
-	for(int i=0; i<camera->get_numRays(); i++)
-		if (visibleCubesCPU[i].id != 0)
-			hitsO++;
-	std::cout<<"Hits in octree "<<hitsO<<std::endl;
-	#endif
 
-	cache->updateCache(visibleCubesCPU, camera->get_numRays(), octree->getnLevels());
+		gettimeofday(&st, NULL);
+		cache->updateCache(visibleCubesCPU, camera->get_numRays(), octree->getnLevels());
+		gettimeofday(&end, NULL);
+		deltaC += ((end.tv_sec  - st.tv_sec) * 1000000u + end.tv_usec - st.tv_usec) / 1.e6;
 
-	std::cerr<<"Coping visibleCubes to GPU: "<<cudaGetErrorString(cudaMemcpy((void*) visibleCubesGPU, (const void*) visibleCubesCPU, camera->get_numRays()*sizeof(visibleCube_t), cudaMemcpyHostToDevice))<<std::endl;
+		int numP = 0;
+		for(int i=0; i<camera->get_numRays(); i++)
+			if (visibleCubesCPU[i].state == PAINTED)
+				numP++;
 
-	raycaster->render(camera, level, octree->getnLevels(), visibleCubesGPU, cache->get_cubeDim(), make_int3(cache->get_cubeInc(),cache->get_cubeInc(),cache->get_cubeInc()), pixelBuffer); 
+		if (numP == camera->get_numRays())
+		{
+			notEnd = false;
+			break;
+		}
 
-	#if 0
-	std::cerr<<"Coping visibleCubes to CPU: "<<cudaGetErrorString(cudaMemcpy((void*) visibleCubesCPU, (const void*) visibleCubesGPU, camera->get_numRays()*sizeof(visibleCube_t), cudaMemcpyDeviceToHost))<<std::endl;
-	int noHitsR = 0;
-	for(int i=0; i<camera->get_numRays(); i++)
-		if (visibleCubesCPU[i].state == PAINTED)
-			noHitsR++;
-	std::cout<<"Hits in ray casting "<<noHitsR<<std::endl;
-	#endif
+		std::cerr<<"Coping visibleCubes to GPU: "<<cudaGetErrorString(cudaMemcpy((void*) visibleCubesGPU, (const void*) visibleCubesCPU, camera->get_numRays()*sizeof(visibleCube_t), cudaMemcpyHostToDevice))<<std::endl;
+
+		gettimeofday(&st, NULL);
+		raycaster->render(camera, level, octree->getnLevels(), visibleCubesGPU, cache->get_cubeDim(), make_int3(cache->get_cubeInc(),cache->get_cubeInc(),cache->get_cubeInc()), pixelBuffer); 
+		gettimeofday(&end, NULL);
+		deltaR += ((end.tv_sec  - st.tv_sec) * 1000000u + end.tv_usec - st.tv_usec) / 1.e6;
+
+
+		#if 0
+		std::cerr<<"Coping visibleCubes to CPU: "<<cudaGetErrorString(cudaMemcpy((void*) visibleCubesCPU, (const void*) visibleCubesGPU, camera->get_numRays()*sizeof(visibleCube_t), cudaMemcpyDeviceToHost))<<std::endl;
+		int noHitsR = 0;
+		for(int i=0; i<camera->get_numRays(); i++)
+			if (visibleCubesCPU[i].state == PAINTED)
+				noHitsR++;
+		std::cout<<"Hits in ray casting "<<noHitsR<<std::endl;
+		#endif
+		iterations++;
+	}
+	std::cout << "Time elapsed in octree: " << deltaO << " sec"<< std::endl;
+	std::cout << "Time elapsed in cache: " << deltaC << " sec"<< std::endl;
+	std::cout << "Time elapsed in raycasting: " << deltaR << " sec"<< std::endl;
+	std::cout << "Time elapsed in total: " << deltaO+deltaC+deltaR << " sec"<< std::endl;
+	std::cout<<"Iterations "<<iterations<<std::endl;
 }
