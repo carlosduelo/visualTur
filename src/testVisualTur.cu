@@ -32,6 +32,7 @@ int main(int argc, char ** argv)
 	params.distance = 50.0f;
 	params.numRayPx = 1;
 	params.maxElementsCache = 1000;
+	params.maxElementsCache_CPU = 10000;
 	params.dimCubeCache = make_int3(32,32,32);
 	params.cubeInc = 2;
 	params.hdf5File = argv[1];
@@ -40,7 +41,7 @@ int main(int argc, char ** argv)
 
 	visualTur * VisualTur = new visualTur(params); 
 
-	VisualTur->camera_Move(make_float3(52.0f, 52.0f, 520.0f));
+	VisualTur->camera_Move(make_float3(512.0f, 52.0f, 4420.0f));
 	VisualTur->camera_MoveForward(1.0f);
 
 	FreeImage_Initialise();
@@ -65,12 +66,52 @@ int main(int argc, char ** argv)
 
 	std::cerr<<"Cuda mem set: "<<cudaGetErrorString(cudaMemset((void *)screenG,0,sizeof(float)*H*W*4))<<std::endl;		
 
+	for(int m=0; m<100; m++)
+	{ 
+		for(int i=0; i<H; i++)
+			for(int j=0; j<W; j++)
+			{
+				int id = i*W + j;
+				screenC[id*4] = 0.0;
+				screenC[id*4+1] = 0.0f;
+				screenC[id*4+2]= 0.0f;
+				screenC[id*4+3]= 0.0f;
+			} 
 
-	for(int it=0; it<50; it++)
-	{
-		//VisualTur->updateVisibleCubes(5, screenG);
-		VisualTur->updateVisibleCubes(9, screenG);
+		for(int it=0; it<50; it++)
+		{
+			//VisualTur->updateVisibleCubes(5, screenG);
+			VisualTur->updateVisibleCubes(9, screenG);
 
+			#if 0
+			std::cerr<<"Retrieve screen from GPU: "<< cudaGetErrorString(cudaMemcpy((void*) screenC, (const void*) screenG, sizeof(float)*W*H*4, cudaMemcpyDeviceToHost))<<std::endl;
+
+			int hits =0;
+			for(int i=0; i<H; i++)
+				for(int j=0; j<W; j++)
+				{
+					int id = i*W + j;
+					if (screenC[id*4]!=0.0f || screenC[id*4+1]!=0.0f || screenC[id*4+2]!=0.0f)
+						hits++;
+					/*
+					picture[i*3] = screenC[i*4]*255;
+					picture[i*3+1] = screenC[i*4+1]*255;
+					picture[i*3+2] = screenC[i*4+2]*255;
+					color.rgbRed = 0;
+					color.rgbGreen = (double)i/800*255.0;
+					color.rgbBlue = (double)j/800*255.0;
+					*/
+					color.rgbRed = screenC[id*4]*255;
+					color.rgbGreen = screenC[id*4+1]*255;
+					color.rgbBlue = screenC[id*4+2]*255;
+					FreeImage_SetPixelColor(bitmap, i, j, &color);
+				} 
+			std::cout<<"--->"<<hits<<std::endl;
+			std::stringstream name;
+			name<<"prueba"<<it<<".png";
+			FreeImage_Save(FIF_PNG, bitmap, name.str().c_str(), 0);
+			#endif
+		}
 		std::cerr<<"Retrieve screen from GPU: "<< cudaGetErrorString(cudaMemcpy((void*) screenC, (const void*) screenG, sizeof(float)*W*H*4, cudaMemcpyDeviceToHost))<<std::endl;
 
 		int hits =0;
@@ -80,14 +121,6 @@ int main(int argc, char ** argv)
 				int id = i*W + j;
 				if (screenC[id*4]!=0.0f || screenC[id*4+1]!=0.0f || screenC[id*4+2]!=0.0f)
 					hits++;
-				/*
-				picture[i*3] = screenC[i*4]*255;
-				picture[i*3+1] = screenC[i*4+1]*255;
-				picture[i*3+2] = screenC[i*4+2]*255;
-				color.rgbRed = 0;
-				color.rgbGreen = (double)i/800*255.0;
-				color.rgbBlue = (double)j/800*255.0;
-				*/
 				color.rgbRed = screenC[id*4]*255;
 				color.rgbGreen = screenC[id*4+1]*255;
 				color.rgbBlue = screenC[id*4+2]*255;
@@ -95,10 +128,10 @@ int main(int argc, char ** argv)
 			} 
 		std::cout<<"--->"<<hits<<std::endl;
 		std::stringstream name;
-		name<<"prueba"<<it<<".png";
+		name<<"prueba"<<m<<".png";
 		FreeImage_Save(FIF_PNG, bitmap, name.str().c_str(), 0);
+		VisualTur->camera_MoveForward(10.0f);
 	}
-
 	cudaFree(screenG);
 	delete[] screenC;
 	FreeImage_DeInitialise();

@@ -78,16 +78,19 @@ NodeLinkedList * LinkedList::moveToLastPosition(NodeLinkedList * node)
 	}
 }
 
-lruCache::lruCache(char * file_name, char * dataset_name, int maxElements, int3 cDim, int cI)
+lruCache::lruCache(char * file_name, char * dataset_name, int maxElements, int3 cDim, int cI, int maxElementsCPU)
 {
 	numElements 	= maxElements;
+	numElementsCPU 	= maxElementsCPU;
 	cubeDim 	= cDim;
 	cubeInc		= make_int3(cI,cI,cI);
 	realcubeDim	= cubeDim + 2 * cubeInc;
 	offsetCube	= (cubeDim.x+2*cubeInc.x)*(cubeDim.y+2*cubeInc.y)*(cubeDim.z+2*cubeInc.z);
 	queuePositions  = new LinkedList(numElements);
+	queuePositionsCPU = new LinkedList(numElementsCPU);
 
 	std::cerr<<"Creating cache in GPU: "<<cudaGetErrorString(cudaMalloc((void**)&cacheData, numElements*offsetCube*sizeof(float)))<<std::endl;
+	cacheDataCPU = new float[numElementsCPU*offsetCube];
 
 	fileManager = new FileManager(file_name, dataset_name);
 }
@@ -95,7 +98,9 @@ lruCache::lruCache(char * file_name, char * dataset_name, int maxElements, int3 
 lruCache::~lruCache()
 {
 	delete queuePositions;
+	delete queuePositionsCPU;
 	cudaFree(cacheData);
+	delete[] cacheDataCPU;
 	delete fileManager;
 }
 
@@ -115,6 +120,7 @@ void lruCache::changeDimensionCube(int maxElements, int3 cDim, int cI)
 	std::cerr<<"Creating cache in GPU: "<<cudaGetErrorString(cudaMalloc((void**)&cacheData, numElements*offsetCube*sizeof(float)))<<std::endl;
 }
 
+#if 0
 bool lruCache::insertElement(index_node_t element, unsigned int * position)
 {
 	std::map<index_node_t, NodeLinkedList *>::iterator it;
@@ -143,44 +149,122 @@ bool lruCache::insertElement(index_node_t element, unsigned int * position)
 	}
 }
 
+bool lruCache::insertElementCPU(index_node_t element, unsigned int * position)
+{
+	std::map<index_node_t, NodeLinkedList *>::iterator it;
+	it = indexStoredCPU.find(element);
+
+	if ( it == indexStoredCPU.end() ) // Not exists
+	{
+		/* Get from the queue the first element, add to hashtable (index, lastPosition) and enqueue the position */
+		NodeLinkedList * node = queuePositionsCPU->getFromFirstPosition();
+
+		*position = node->element; 
+
+		indexStoredCPU.insert(std::pair<int, NodeLinkedList *>(element, node));
+
+		return true;
+	}
+	else // Exist
+	{
+		/* If the elements is already in the cache remove from the queue and insert at the end */
+		NodeLinkedList * node = it->second;
+		*position = node->element; 
+
+		queuePositionsCPU->moveToLastPosition(node);
+
+		return false;
+	}
+}
+#endif
+
+void lruCache::updateCube(visibleCube_t * cube, int nLevels, int * nEinsertedCPU, int * nEinsertedGPU)
+{
+	// Update in CPU Cache
+	std::map<index_node_t, NodeLinkedList *>::iterator it;
+	it = indexStoredCPU.find(cube->id);
+	unsigned posC = 0;
+	unsigned posG = 0;
+
+	if ( it == indexStoredCPU.end() ) // Not exists
+	{
+		if (*nEinsertedCPU > numElementsCPU)
+		{
+			cube->state = NOCACHED;
+			return;
+		}
+
+		/* Get from the queue the first element, add to hashtable (index, lastPosition) and enqueue the position */
+		NodeLinkedList * node = queuePositionsCPU->getFromFirstPosition();
+
+		posC = node->element; 
+
+		indexStoredCPU.insert(std::pair<int, NodeLinkedList *>(cube->id, node));
+		int level = getIndexLevel(cube->id);
+		int3 coord = getMinBoxIndex2(cube->id, level, nLevels);
+		int3 minBox = coord - cubeInc;
+		int3 maxBox = minBox + realcubeDim;
+		fileManager->readHDF5_Voxel_Array(minBox, maxBox, cacheDataCPU + posC*offsetCube);
+		(*nEinsertedCPU)++;
+	}
+	else // Exist
+	{
+		/* If the elements is already in the cache remove from the queue and insert at the end */
+		NodeLinkedList * node = it->second;
+		posC = node->element; 
+
+		queuePositionsCPU->moveToLastPosition(node);
+	}
+
+	// Update in GPU cache
+	it = indexStored.find(cube->id);
+	if ( it == indexStored.end() ) // Not exists
+	{
+		if (*nEinsertedGPU > numElements)
+		{
+			cube->state = NOCACHED;
+			std::cout<<"---------------------------------------------------------------------------------->"<<std::endl;
+			return;
+		}
+		/* Get from the queue the first element, add to hashtable (index, lastPosition) and enqueue the position */
+		NodeLinkedList * node = queuePositions->getFromFirstPosition();
+
+		posG = node->element; 
+
+		indexStored.insert(std::pair<int, NodeLinkedList *>(cube->id, node));
+		cube->data = cacheData + posG*offsetCube;
+		cube->state = CACHED;
+		std::cerr<<"Creating cache in GPU: "<<cudaGetErrorString(cudaMemcpy((void*) cube->data, (const void*) (cacheDataCPU + posC*offsetCube), offsetCube*sizeof(float), cudaMemcpyHostToDevice))<<std::endl;
+
+		(*nEinsertedGPU)++;
+	}
+	else // Exist
+	{
+		/* If the elements is already in the cache remove from the queue and insert at the end */
+		NodeLinkedList * node = it->second;
+		posG= node->element; 
+		queuePositions->moveToLastPosition(node);
+		cube->data = cacheData + posG*offsetCube;
+		cube->state = CACHED;
+	}
+}
+
 void lruCache::updateCache(visibleCube_t * visibleCubes, int num, int nLevels)
 {
-	unsigned int pos = 0;
-	float * auxData = new float[offsetCube];
-
-	int newCubes = 0;
+	int newCubesC = 0;
+	int newCubesG = 0;
 
 	for(int i=0; i<num; i++)
 	{
 		if (visibleCubes[i].id != 0 && visibleCubes[i].state != PAINTED)
 		{
-
-			if (insertElement(visibleCubes[i].id, &pos))
-			{
-				int level = getIndexLevel(visibleCubes[i].id);
-				int3 coord = getMinBoxIndex2(visibleCubes[i].id, level, nLevels);
-				int3 minBox = coord - cubeInc;
-				int3 maxBox = minBox + realcubeDim;
-				fileManager->readHDF5_Voxel_Array(minBox, maxBox, auxData);
-
-				visibleCubes[i].data = cacheData + pos*offsetCube;
-				visibleCubes[i].state = CACHED;
-				std::cerr<<"Creating cache in GPU: "<<cudaGetErrorString(cudaMemcpy((void*) visibleCubes[i].data, (const void*) auxData, offsetCube*sizeof(float), cudaMemcpyHostToDevice))<<std::endl;
-
-				newCubes++;
-			}
-			else
-			{
-				visibleCubes[i].data = cacheData + pos*offsetCube;
-				visibleCubes[i].state = CACHED;
-			}
+			updateCube(&visibleCubes[i], nLevels, &newCubesC, &newCubesG);
 		}
 	}
 
-	delete[] auxData;
-
-	std::cerr<<"New cubes on cache: "<<newCubes<<std::endl;
+	std::cerr<<"New cubes on cache: "<<newCubesC<<" CPU "<<newCubesG<<" GPU "<<std::endl;
 }
+
 int	 lruCache::get_numElements(){return numElements;}
 int3	 lruCache::get_cubeDim(){return cubeDim;}
 int	 lruCache::get_cubeInc(){return cubeInc.x;}

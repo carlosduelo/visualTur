@@ -20,6 +20,7 @@ typedef struct
 	int	numRayPx;
 	// Cube Cache stuff
 	int	maxElementsCache;
+	int	maxElementsCache_CPU;
 	int3	dimCubeCache;
 	int	cubeInc;
 	// hdf5 files

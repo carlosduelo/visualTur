@@ -13,7 +13,7 @@ visualTur::visualTur(visualTurParams_t initParams)
 	resetVisibleCubes();
 
 	// Cache creation
-	cache = new lruCache(initParams.hdf5File, initParams.dataset_name, initParams.maxElementsCache, initParams.dimCubeCache, initParams.cubeInc);
+	cache = new lruCache(initParams.hdf5File, initParams.dataset_name, initParams.maxElementsCache, initParams.dimCubeCache, initParams.cubeInc, initParams.maxElementsCache_CPU);
 
 	// Create octree
 	octree = new Octree(initParams.octreeFile, camera);
@@ -123,7 +123,7 @@ void visualTur::updateVisibleCubes(int level, float * pixelBuffer)
 {
 	octree->getBoxIntersected(level, visibleCubesGPU, visibleCubesCPU);
 
-	#if 1
+	#if 0
 	int hitsO = 0;
 	for(int i=0; i<camera->get_numRays(); i++)
 		if (visibleCubesCPU[i].id != 0)
@@ -137,7 +137,7 @@ void visualTur::updateVisibleCubes(int level, float * pixelBuffer)
 
 	raycaster->render(camera, level, octree->getnLevels(), visibleCubesGPU, cache->get_cubeDim(), make_int3(cache->get_cubeInc(),cache->get_cubeInc(),cache->get_cubeInc()), pixelBuffer); 
 
-	#if 1
+	#if 0
 	std::cerr<<"Coping visibleCubes to CPU: "<<cudaGetErrorString(cudaMemcpy((void*) visibleCubesCPU, (const void*) visibleCubesGPU, camera->get_numRays()*sizeof(visibleCube_t), cudaMemcpyDeviceToHost))<<std::endl;
 	int noHitsR = 0;
 	for(int i=0; i<camera->get_numRays(); i++)

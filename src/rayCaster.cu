@@ -127,7 +127,7 @@ __global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3
 {
 	unsigned int tid = blockIdx.y * blockDim.x * gridDim.y + blockIdx.x * blockDim.x + threadIdx.x;
 
-	if (tid < (W*H) && cube[tid].state != PAINTED)
+	if (tid < (W*H) && cube[tid].state != PAINTED && cube[tid].state != NOCACHED)
 	{
 		float tnear;
 		float tfar;
@@ -152,8 +152,8 @@ __global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3
 			float 				ant		= 0.0;
 			float				sig		= 0.0;
 			float steps = 0;
-			float3 vStep = 0.1 * rays[tid];
-			float maxStep = (tfar-tnear)/0.1;
+			float3 vStep = 0.5 * rays[tid];
+			float maxStep = (tfar-tnear)/0.5;
 			
 
 			while(steps <= maxStep)
@@ -174,10 +174,10 @@ __global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3
 					}
 					else
 					{
-						#if 1
+						#if 0
 						// Intersection Refinament using an iterative bisection procedure
 						float valueE = 0.0;
-						for(int k = 0; k<10;k++) // XXX Cuanto más grande mejor debería ser el renderizado
+						for(int k = 0; k<5;k++) // XXX Cuanto más grande mejor debería ser el renderizado
 						{
 							Xnew = (Xfar - Xnear)*((iso-sig)/(ant-sig))+Xnear;
 							valueE = getElementInterpolate(Xnew, cube[tid].data, minBox, maxBox);
@@ -205,9 +205,9 @@ __global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3
 			float3 l = Xnew - ligth;
 			l = normalize(l);	
 			float nl = fabs(n.x*l.x + n.y*l.y + n.z*l.z);
-			screen[tid*4]   = 0.3 * nl;
-			screen[tid*4+1] = 0.4 * nl;
-			screen[tid*4+2] = 0.5 * nl;
+			screen[tid*4]   = 0.5*nl;//(Xnew.y > 64.0f ? 0.0 : Xnew.y / 64.0f)* nl;
+			screen[tid*4+1] = 0.3*nl;//(Xnew.y < 32.0f || Xnew.y > 96.0f ? 0.0 : Xnew.y / 96.0f) * nl;
+			screen[tid*4+2] = 0.1*nl;//(Xnew.y < 64.0f || Xnew.y > 128.0f ? 0.0 : Xnew.y / 128.0f) * nl;
 			screen[tid*4+3] = 1.0f;
 			cube[tid].state= PAINTED;
 		}
@@ -217,7 +217,7 @@ __global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3
 			screen[tid*4+1] = 1.0f; 
 			screen[tid*4+2] = 1.0f; 
 			screen[tid*4+3] = 1.0f; 
-			if (cube[tid].state == NOCUBE)
+			if (cube[tid].id == 0)
 				cube[tid].state = PAINTED;
 			else
 				cube[tid].state = NOCUBE;

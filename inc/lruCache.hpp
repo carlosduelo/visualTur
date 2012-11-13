@@ -41,20 +41,28 @@ class lruCache
 
 	private:
 		int 					 numElements;
+		int 					 numElementsCPU;
 		int3					 cubeDim;
 		int3					 cubeInc;
 		int3					 realcubeDim;
 		int					 offsetCube;
 
+		std::map<index_node_t, NodeLinkedList *> indexStoredCPU;
+		LinkedList	*			 queuePositionsCPU;
 		std::map<index_node_t, NodeLinkedList *> indexStored;
 		LinkedList	*			 queuePositions;
 
 		float		*			 cacheData;
+		float		*			 cacheDataCPU;
 		FileManager	*			 fileManager;
 
+		#if 0
 		bool insertElement(index_node_t element, unsigned int * position);
+		bool insertElementCPU(index_node_t element, unsigned int * position);
+		#endif
+		void updateCube(visibleCube_t * cube, int nLevels, int * nEinsertedCPU, int * nEinsertedGPU);
 	public:
-		lruCache(char * file_name, char * dataset_name, int maxElements, int3 cDim, int cI);
+		lruCache(char * file_name, char * dataset_name, int maxElements, int3 cDim, int cI, int maxElementsCPU);
 		
 		~lruCache();
 
