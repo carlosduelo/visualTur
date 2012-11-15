@@ -26,6 +26,9 @@ visualTur::visualTur(visualTurParams_t initParams)
 	// Create rayCaster
 	raycaster = new rayCaster(octree->getIsosurface(), make_float3(0.0f, 512.0f, 0.0f));
 
+	timingO = 0.0;
+	timingC = 0.0;
+	timingR = 0.0;
 }
 
 visualTur::~visualTur()
@@ -157,12 +160,14 @@ void visualTur::updateVisibleCubes(int level, float * pixelBuffer)
 		octree->getBoxIntersected(level, visibleCubesGPU, visibleCubesCPU);
 		gettimeofday(&end, NULL);
 		deltaO += ((end.tv_sec  - st.tv_sec) * 1000000u + end.tv_usec - st.tv_usec) / 1.e6;
+		timingO += ((end.tv_sec  - st.tv_sec) * 1000000u + end.tv_usec - st.tv_usec) / 1.e6;
 
 
 		gettimeofday(&st, NULL);
 		cache->updateCache(visibleCubesCPU, camera->get_numRays(), octree->getnLevels());
 		gettimeofday(&end, NULL);
 		deltaC += ((end.tv_sec  - st.tv_sec) * 1000000u + end.tv_usec - st.tv_usec) / 1.e6;
+		timingC += ((end.tv_sec  - st.tv_sec) * 1000000u + end.tv_usec - st.tv_usec) / 1.e6;
 
 		int numP = 0;
 		for(int i=0; i<camera->get_numRays(); i++)
@@ -181,6 +186,7 @@ void visualTur::updateVisibleCubes(int level, float * pixelBuffer)
 		raycaster->render(camera, level, octree->getnLevels(), visibleCubesGPU, cache->get_cubeDim(), make_int3(cache->get_cubeInc(),cache->get_cubeInc(),cache->get_cubeInc()), pixelBuffer); 
 		gettimeofday(&end, NULL);
 		deltaR += ((end.tv_sec  - st.tv_sec) * 1000000u + end.tv_usec - st.tv_usec) / 1.e6;
+		timingR += ((end.tv_sec  - st.tv_sec) * 1000000u + end.tv_usec - st.tv_usec) / 1.e6;
 
 
 		#if 0
@@ -193,9 +199,11 @@ void visualTur::updateVisibleCubes(int level, float * pixelBuffer)
 		#endif
 		iterations++;
 	}
+	cache->printStatistics();
 	std::cout << "Time elapsed in octree: " << deltaO << " sec"<< std::endl;
 	std::cout << "Time elapsed in cache: " << deltaC << " sec"<< std::endl;
 	std::cout << "Time elapsed in raycasting: " << deltaR << " sec"<< std::endl;
-	std::cout << "Time elapsed in total: " << deltaO+deltaC+deltaR << " sec"<< std::endl;
+	std::cout << "Time elapsed in total frame: " << deltaO+deltaC+deltaR << " sec"<< std::endl;
+	std::cout << "Time elapsed accumulate total "<<timingO+timingC+timingR<<" Octree "<<timingO<<" Cache "<<timingC<<" RayCasting "<<timingR<<std::endl;
 	std::cout<<"Iterations "<<iterations<<std::endl;
 }

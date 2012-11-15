@@ -22,8 +22,8 @@ int main(int argc, char ** argv)
 		cudaSetDevice(device);
 	}
 
-	int W = 800;
-	int H = 800;
+	int W = 1024;
+	int H = 1024;
 
 	visualTurParams_t params;
 	params.W = W;
@@ -33,7 +33,7 @@ int main(int argc, char ** argv)
 	params.distance = 50.0f;
 	params.numRayPx = 1;
 	params.maxElementsCache = 2000;
-	params.maxElementsCache_CPU = 10000;
+	params.maxElementsCache_CPU = 15000;
 	params.dimCubeCache = make_int3(32,32,32);
 	params.cubeInc = 2;
 	params.hdf5File = argv[1];
@@ -53,7 +53,7 @@ int main(int argc, char ** argv)
 	for(int i=0; i<H; i++)
 		for(int j=0; j<W; j++)
 		{
-			int id = i*800 + j;
+			int id = i*W + j;
 			screenC[id*4] = 0.0;
 			screenC[id*4+1] = 0.0f;
 			screenC[id*4+2]= 0.0f;
@@ -82,9 +82,7 @@ int main(int argc, char ** argv)
 				screenC[id*4+3]= 0.0f;
 			} 
 
-		VisualTur->updateVisibleCubes(9, screenG);
-		//VisualTur->updateVisibleCubes(5, screenG);
-		//VisualTur->updateVisibleCubes(8, screenG);
+		VisualTur->updateVisibleCubes(8, screenG);
 
 		std::cerr<<"Retrieve screen from GPU: "<< cudaGetErrorString(cudaMemcpy((void*) screenC, (const void*) screenG, sizeof(float)*W*H*4, cudaMemcpyDeviceToHost))<<std::endl;
 

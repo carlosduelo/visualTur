@@ -47,6 +47,10 @@ class visualTur
 
 		void resetVisibleCubes();
 
+		double timingO;
+		double timingC;
+		double timingR;
+
 	public:
 		visualTur(visualTurParams_t initParams);
 

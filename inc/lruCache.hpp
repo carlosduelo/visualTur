@@ -8,7 +8,9 @@
 #include "config.hpp"
 #include "FileManager.hpp"
 #include "cutil_math.h"
-#include <map>
+//#include <map>
+#include <boost/unordered_map.hpp>
+#include <sys/time.h>
 
 
 class NodeLinkedList
@@ -48,14 +50,28 @@ class lruCache
 		int3					 realcubeDim;
 		int					 offsetCube;
 
-		std::map<index_node_t, NodeLinkedList *> indexStoredCPU;
+		//std::map<index_node_t, NodeLinkedList *> indexStoredCPU;
+		boost::unordered_map<index_node_t, NodeLinkedList *> indexStoredCPU;
 		LinkedList	*			 queuePositionsCPU;
-		std::map<index_node_t, NodeLinkedList *> indexStored;
+		//std::map<index_node_t, NodeLinkedList *> indexStored;
+		boost::unordered_map<index_node_t, NodeLinkedList *> indexStored;
 		LinkedList	*			 queuePositions;
 
 		float		*			 cacheData;
 		float		*			 cacheDataCPU;
 		FileManager	*			 fileManager;
+
+		// Measure propouse
+		int 					access;
+		int					hitsCPU;
+		int					hitsGPU;
+		int					missCPU;
+		int					missGPU;
+		double					timingAccess;
+		double					timinghitsCPU;
+		double					timingmissCPU;
+		double					timinghitsGPU;
+		double					timingmissGPU;
 
 		#if 0
 		bool insertElement(index_node_t element, unsigned int * position);
@@ -74,5 +90,7 @@ class lruCache
 		void changeDimensionCube(int maxElements, int3 cDim, int cI);
 
 		void updateCache(visibleCube_t * visibleCubes, int num, int nLevels);
+
+		void printStatistics();
 };
 #endif

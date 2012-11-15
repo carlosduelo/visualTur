@@ -174,7 +174,13 @@ __global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3
 					}
 					else
 					{
-						#if 0
+						/*
+						Si el valor en los extremos es V_s y V_f y el valor que buscas (el de la isosuperficie) es V, S es el punto inicial y F es el punto final.
+						a = (V - V_s) / (V_f - V_s)
+						I = S * (1 - a) + V * a  (creo que esta fórmula te la puse al revés en el caso del color, revísala) 
+						*/
+						
+						#if 1
 						// Intersection Refinament using an iterative bisection procedure
 						float valueE = 0.0;
 						for(int k = 0; k<5;k++) // XXX Cuanto más grande mejor debería ser el renderizado
@@ -187,7 +193,8 @@ __global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3
 								Xfar=Xnew;
 						}
 						#endif
-						Xnew = Xnear;
+						float a = (iso-sig)/(valueE-sig);
+						Xnew = Xnear*(1.0f-a)+ Xnew*a;
 						hit = true;
 						steps = maxStep;
 					}
@@ -206,8 +213,8 @@ __global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3
 			l = normalize(l);	
 			float nl = fabs(n.x*l.x + n.y*l.y + n.z*l.z);
 			screen[tid*4]   = 0.5*nl;//(Xnew.y > 64.0f ? 0.0 : Xnew.y / 64.0f)* nl;
-			screen[tid*4+1] = 0.3*nl;//(Xnew.y < 32.0f || Xnew.y > 96.0f ? 0.0 : Xnew.y / 96.0f) * nl;
-			screen[tid*4+2] = 0.1*nl;//(Xnew.y < 64.0f || Xnew.y > 128.0f ? 0.0 : Xnew.y / 128.0f) * nl;
+			screen[tid*4+1] = 0.5*nl;//(Xnew.y < 32.0f || Xnew.y > 96.0f ? 0.0 : Xnew.y / 96.0f) * nl;
+			screen[tid*4+2] = 0.0*nl;//(Xnew.y < 64.0f || Xnew.y > 128.0f ? 0.0 : Xnew.y / 128.0f) * nl;
 			screen[tid*4+3] = 1.0f;
 			cube[tid].state= PAINTED;
 		}

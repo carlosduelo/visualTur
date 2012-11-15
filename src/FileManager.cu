@@ -90,11 +90,12 @@ void FileManager::readHDF5_Voxel_Array(int3 s, int3 e, float * data)
 	// Container todo a 0's
 	if (s.x >= (int)this->dims[0] || s.y >= (int)this->dims[1] || s.z >= (int)this->dims[2] || e.x < 0 || e.y < 0 || e.z < 0)
 	{
-		std::cerr<<"Warning: reading cube outsite the volume"<<std::endl;
-		#if 0
-		std::cout<<this->dims[0]<<" "<<this->dims[1]<<" "<<this->dims[2]<<std::endl;
-		std::cout<<s.x<<" "<<s.y<<" "<<s.z<<std::endl;
-		std::cout<<e.x<<" "<<e.y<<" "<<e.z<<std::endl;
+		std::cerr<<"Warning: reading cube outsite the volume "<<std::endl;
+		#if 1
+		std::cerr<<"Dimension valume "<<this->dims[0]<<" "<<this->dims[1]<<" "<<this->dims[2]<<std::endl;
+		std::cerr<<"start "<<s.x<<" "<<s.y<<" "<<s.z<<std::endl;
+		std::cerr<<"end "<<e.x<<" "<<e.y<<" "<<e.z<<std::endl;
+		std::cerr<<"Dimension cube "<<dim[0]<<" "<<dim[1]<<" "<<dim[2]<<std::endl;
 		#endif
 		for(unsigned int i=0; i<(dim[0]*dim[1]*dim[2]); i++)
 			data[i] = 0.0;
