@@ -109,7 +109,7 @@ lruCache::lruCache(char * file_name, char * dataset_name, int maxElements, int3 
 	queuePositions  = new LinkedList(numElements);
 	queuePositionsCPU = new LinkedList(numElementsCPU);
 
-	std::cerr<<"Creating cache in GPU: "<<cudaGetErrorString(cudaMalloc((void**)&cacheData, numElements*offsetCube*sizeof(float)))<<std::endl;
+	std::cerr<<"Creating cache in GPU "<< numElements*offsetCube*sizeof(float)/1024/1024<<" MB: "<<cudaGetErrorString(cudaMalloc((void**)&cacheData, numElements*offsetCube*sizeof(float)))<<std::endl;
 	cacheDataCPU = new float[numElementsCPU*offsetCube];
 	//std::cerr<<"Creating cache in CPU: "<<cudaGetErrorString(cudaHostAlloc((void**)&cacheDataCPU, numElementsCPU*offsetCube*sizeof(float),cudaHostAllocDefault))<<std::endl;
 
@@ -153,7 +153,7 @@ void lruCache::changeDimensionCube(int maxElements, int3 cDim, int cI)
 	offsetCube	= realcubeDim.x*realcubeDim.y*realcubeDim.z ;//(cubeDim.x+2*cubeInc.x)*(cubeDim.y+2*cubeInc.y)*(cubeDim.z+2*cubeInc.z);
 	queuePositions  = new LinkedList(numElements);
 
-	std::cerr<<"Creating cache in GPU: "<<cudaGetErrorString(cudaMalloc((void**)&cacheData, numElements*offsetCube*sizeof(float)))<<std::endl;
+	std::cerr<<"Creating cache in GPU "<< numElements*offsetCube*sizeof(float)/1024/1024<<" MB: "<<cudaGetErrorString(cudaMalloc((void**)&cacheData, numElements*offsetCube*sizeof(float)))<<std::endl;
 	cacheDataCPU = new float[numElementsCPU*offsetCube];
 	//std::cerr<<"Creating cache in CPU: "<<cudaGetErrorString(cudaHostAlloc((void**)&cacheDataCPU, numElementsCPU*offsetCube*sizeof(float),cudaHostAllocDefault))<<std::endl;
 	access = 0;

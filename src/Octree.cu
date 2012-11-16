@@ -885,9 +885,10 @@ __global__ void insertOctreePointers(index_node_t ** octreeGPU, int * sizes, ind
 */
 
 /* Lee el Octree de un fichero */
-Octree::Octree(const char * file_name, Camera * p_camera)
+Octree::Octree(const char * file_name, Camera * p_camera, int p_maxLevel)
 {
 	camera = p_camera;
+	maxLevel = p_maxLevel;
 
         /* Read octree from file */
 	std::ifstream file;
@@ -936,28 +937,28 @@ Octree::Octree(const char * file_name, Camera * p_camera)
 	std::cerr<<"Copying octree to GPU"<<std::endl;
 
 	int total = 0;
-	for(int i=0; i<=nLevels; i++)
+	for(int i=0; i<=maxLevel; i++)
 		total+=sizesCPU[i];
 
-	std::cerr<<"Allocating memory octree CUDA octree: "<< cudaGetErrorString(cudaMalloc(&octree, (nLevels+1)*sizeof(index_node_t*))) << std::endl;
-	std::cerr<<"Allocating memory octree CUDA memory: "<< cudaGetErrorString(cudaMalloc(&memoryGPU, total*sizeof(index_node_t))) << std::endl;
-	std::cerr<<"Allocating memory octree CUDA sizes: "<< cudaGetErrorString(cudaMalloc(&sizes,   (nLevels+1)*sizeof(int))) << std::endl;
+	std::cerr<<"Allocating memory octree CUDA octree "<<(maxLevel+1)*sizeof(index_node_t*)/1024.0f/1024.0f<<" MB: "<< cudaGetErrorString(cudaMalloc(&octree, (maxLevel+1)*sizeof(index_node_t*))) << std::endl;
+	std::cerr<<"Allocating memory octree CUDA memory "<<total*sizeof(index_node_t)/1024.0f/1024.0f<<" MB: "<< cudaGetErrorString(cudaMalloc(&memoryGPU, total*sizeof(index_node_t))) << std::endl;
+	std::cerr<<"Allocating memory octree CUDA sizes "<<(maxLevel+1)*sizeof(int)/1024.0f/1024.0f<<" MB: "<< cudaGetErrorString(cudaMalloc(&sizes,   (maxLevel+1)*sizeof(int))) << std::endl;
 
 	/* Compiando sizes */
-	std::cerr<<"Coping to device: "<< cudaGetErrorString(cudaMemcpy((void*)sizes, (void*)sizesCPU, (nLevels+1)*sizeof(int), cudaMemcpyHostToDevice)) << std::endl;
+	std::cerr<<"Coping to device: "<< cudaGetErrorString(cudaMemcpy((void*)sizes, (void*)sizesCPU, (maxLevel+1)*sizeof(int), cudaMemcpyHostToDevice)) << std::endl;
 	/* end sizes */
 
 	/* Copying octree */
 
 	int offset = 0;
-	for(int i=0; i<=nLevels; i++)
+	for(int i=0; i<=maxLevel; i++)
 	{
 		std::cerr<<"Coping to device: "<< cudaGetErrorString(cudaMemcpy((void*)(memoryGPU+offset), (void*)octreeCPU[i], sizesCPU[i]*sizeof(index_node_t), cudaMemcpyHostToDevice)) << std::endl;
 		offset+=sizesCPU[i];
 	}	
 	
 	dim3 blocks(1);
-	dim3 threads(nLevels+1);
+	dim3 threads(maxLevel+1);
 	
 	insertOctreePointers<<<blocks,threads>>>(octree, sizes, memoryGPU);
 	std::cerr<<"Launching kernek blocks ("<<blocks.x<<","<<blocks.y<<","<<blocks.z<<") threads ("<<threads.x<<","<<threads.y<<","<<threads.z<<") error: "<< cudaGetErrorString(cudaGetLastError())<<std::endl;

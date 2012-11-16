@@ -180,7 +180,7 @@ __global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3
 						I = S * (1 - a) + V * a  (creo que esta fórmula te la puse al revés en el caso del color, revísala) 
 						*/
 						
-						#if 1
+						#if 0
 						// Intersection Refinament using an iterative bisection procedure
 						float valueE = 0.0;
 						for(int k = 0; k<5;k++) // XXX Cuanto más grande mejor debería ser el renderizado
@@ -193,8 +193,8 @@ __global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3
 								Xfar=Xnew;
 						}
 						#endif
-						float a = (iso-sig)/(valueE-sig);
-						Xnew = Xnear*(1.0f-a)+ Xnew*a;
+						float a = (iso-ant)/(sig-ant);
+						Xnew = Xfar*(1.0f-a)+ Xnear*a;
 						hit = true;
 						steps = maxStep;
 					}
@@ -212,10 +212,35 @@ __global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3
 			float3 l = Xnew - ligth;
 			l = normalize(l);	
 			float nl = fabs(n.x*l.x + n.y*l.y + n.z*l.z);
+
+			#if 1
 			screen[tid*4]   = 0.5*nl;//(Xnew.y > 64.0f ? 0.0 : Xnew.y / 64.0f)* nl;
-			screen[tid*4+1] = 0.5*nl;//(Xnew.y < 32.0f || Xnew.y > 96.0f ? 0.0 : Xnew.y / 96.0f) * nl;
+			screen[tid*4+1] = 0.6*nl;//(Xnew.y < 32.0f || Xnew.y > 96.0f ? 0.0 : Xnew.y / 96.0f) * nl;
 			screen[tid*4+2] = 0.0*nl;//(Xnew.y < 64.0f || Xnew.y > 128.0f ? 0.0 : Xnew.y / 128.0f) * nl;
 			screen[tid*4+3] = 1.0f;
+			#else
+			if (Xnew.y >= 0.0f && Xnew.y < 128.0f/3)
+			{
+				screen[tid*4]   = (3.0f*Xnew.y/128.0f)*nl;//(Xnew.y > 64.0f ? 0.0 : Xnew.y / 64.0f)* nl;
+				screen[tid*4+1] = 0.0f;//(Xnew.y < 32.0f || Xnew.y > 96.0f ? 0.0 : Xnew.y / 96.0f) * nl;
+				screen[tid*4+2] = 0.0f;//(Xnew.y < 64.0f || Xnew.y > 128.0f ? 0.0 : Xnew.y / 128.0f) * nl;
+				screen[tid*4+3] = 1.0f;
+			}
+			else if (Xnew.y >= 128.0f/3 && Xnew.y < (2*128.0f)/3)
+			{
+				screen[tid*4]   = 0.0f;//(Xnew.y > 64.0f ? 0.0 : Xnew.y / 64.0f)* nl;
+				screen[tid*4+1] = (3.0f*(Xnew.y-128.0f/3.0f)/128.0f)*nl;//(Xnew.y < 32.0f || Xnew.y > 96.0f ? 0.0 : Xnew.y / 96.0f) * nl;
+				screen[tid*4+2] = 0.0f;//(Xnew.y < 64.0f || Xnew.y > 128.0f ? 0.0 : Xnew.y / 128.0f) * nl;
+				screen[tid*4+3] = 1.0f;
+			}
+			else
+			{
+				screen[tid*4]   = 0.0;//(Xnew.y > 64.0f ? 0.0 : Xnew.y / 64.0f)* nl;
+				screen[tid*4+1] = 0.0;//(Xnew.y < 32.0f || Xnew.y > 96.0f ? 0.0 : Xnew.y / 96.0f) * nl;
+				screen[tid*4+2] = (3.0f*(Xnew.y-2.0f*128.0f/3.0f)/512.f)*nl;//(Xnew.y < 64.0f || Xnew.y > 128.0f ? 0.0 : Xnew.y / 128.0f) * nl;
+				screen[tid*4+3] = 1.0f;
+			}
+			#endif
 			cube[tid].state= PAINTED;
 		}
 		else

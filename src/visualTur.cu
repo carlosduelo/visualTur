@@ -14,14 +14,15 @@ visualTur::visualTur(visualTurParams_t initParams)
 
 	// Creating visible cubes array
 	visibleCubesCPU = new visibleCube_t[camera->get_numRays()];
-	std::cerr<<"Allocating memory visibleCubesGPU: "<< cudaGetErrorString(cudaMalloc((void**)&visibleCubesGPU, camera->get_numRays()*sizeof(visibleCube_t)))<<std::endl;
+	std::cerr<<"Allocating memory visibleCubesGPU "<<camera->get_numRays()*sizeof(visibleCube_t)/1024/1024 <<" MB : "<< cudaGetErrorString(cudaMalloc((void**)&visibleCubesGPU, camera->get_numRays()*sizeof(visibleCube_t)))<<std::endl;
 	resetVisibleCubes();
 
 	// Cache creation
 	cache = new lruCache(initParams.hdf5File, initParams.dataset_name, initParams.maxElementsCache, initParams.dimCubeCache, initParams.cubeInc, initParams.maxElementsCache_CPU);
 
+	octreeLevel = initParams.octreeLevel;
 	// Create octree
-	octree = new Octree(initParams.octreeFile, camera);
+	octree = new Octree(initParams.octreeFile, camera, octreeLevel);
 
 	// Create rayCaster
 	raycaster = new rayCaster(octree->getIsosurface(), make_float3(0.0f, 512.0f, 0.0f));
@@ -82,7 +83,7 @@ void visualTur::changeScreen(int pW, int pH, float pfovW, float pfovH, float pDi
 	delete[]	visibleCubesCPU;
 	cudaFree(visibleCubesGPU);
 	visibleCubesCPU = new visibleCube_t[camera->get_numRays()];
-	std::cerr<<"Allocating memory visibleCubesGPU: "<< cudaGetErrorString(cudaMalloc((void**)&visibleCubesGPU, camera->get_numRays()*sizeof(visibleCube_t)))<<std::endl;
+	std::cerr<<"Allocating memory visibleCubesGPU "<<camera->get_numRays()*sizeof(visibleCube_t)/1024/1024 <<" MB : "<< cudaGetErrorString(cudaMalloc((void**)&visibleCubesGPU, camera->get_numRays()*sizeof(visibleCube_t)))<<std::endl;
 	resetVisibleCubes();
 }
 
@@ -93,7 +94,7 @@ void visualTur::changeNumRays(int pnR)
 	delete[]	visibleCubesCPU;
 	cudaFree(visibleCubesGPU);
 	visibleCubesCPU = new visibleCube_t[camera->get_numRays()];
-	std::cerr<<"Allocating memory visibleCubesGPU: "<< cudaGetErrorString(cudaMalloc((void**)&visibleCubesGPU, camera->get_numRays()*sizeof(visibleCube_t)))<<std::endl;
+	std::cerr<<"Allocating memory visibleCubesGPU "<<camera->get_numRays()*sizeof(visibleCube_t)/1024/1024 <<" MB : "<< cudaGetErrorString(cudaMalloc((void**)&visibleCubesGPU, camera->get_numRays()*sizeof(visibleCube_t)))<<std::endl;
 	resetVisibleCubes();
 }
 
@@ -105,7 +106,7 @@ void visualTur::changeCacheParameters(int nE, int3 cDim, int cInc)
 	cudaFree(visibleCubesGPU);
 
 	visibleCubesCPU = new visibleCube_t[camera->get_numRays()];
-	std::cerr<<"Allocating memory visibleCubesGPU: "<< cudaGetErrorString(cudaMalloc((void**)&visibleCubesGPU, camera->get_numRays()*sizeof(visibleCube_t)))<<std::endl;
+	std::cerr<<"Allocating memory visibleCubesGPU "<<camera->get_numRays()*sizeof(visibleCube_t)/1024/1024 <<" MB : "<< cudaGetErrorString(cudaMalloc((void**)&visibleCubesGPU, camera->get_numRays()*sizeof(visibleCube_t)))<<std::endl;
 	resetVisibleCubes();
 }
 
@@ -145,7 +146,7 @@ void	visualTur::camera_StrafeRight(float Distance)
 	resetVisibleCubes();
 }
 
-void visualTur::updateVisibleCubes(int level, float * pixelBuffer)
+void visualTur::updateVisibleCubes(float * pixelBuffer)
 {
 	std::cout<<"Rendering new frame"<<std::endl;
 	bool notEnd = true;
@@ -157,7 +158,7 @@ void visualTur::updateVisibleCubes(int level, float * pixelBuffer)
 	{
 		struct timeval st, end;
 		gettimeofday(&st, NULL);
-		octree->getBoxIntersected(level, visibleCubesGPU, visibleCubesCPU);
+		octree->getBoxIntersected(octreeLevel, visibleCubesGPU, visibleCubesCPU);
 		gettimeofday(&end, NULL);
 		deltaO += ((end.tv_sec  - st.tv_sec) * 1000000u + end.tv_usec - st.tv_usec) / 1.e6;
 		timingO += ((end.tv_sec  - st.tv_sec) * 1000000u + end.tv_usec - st.tv_usec) / 1.e6;
@@ -183,7 +184,7 @@ void visualTur::updateVisibleCubes(int level, float * pixelBuffer)
 		std::cerr<<"Coping visibleCubes to GPU: "<<cudaGetErrorString(cudaMemcpy((void*) visibleCubesGPU, (const void*) visibleCubesCPU, camera->get_numRays()*sizeof(visibleCube_t), cudaMemcpyHostToDevice))<<std::endl;
 
 		gettimeofday(&st, NULL);
-		raycaster->render(camera, level, octree->getnLevels(), visibleCubesGPU, cache->get_cubeDim(), make_int3(cache->get_cubeInc(),cache->get_cubeInc(),cache->get_cubeInc()), pixelBuffer); 
+		raycaster->render(camera, octreeLevel, octree->getnLevels(), visibleCubesGPU, cache->get_cubeDim(), make_int3(cache->get_cubeInc(),cache->get_cubeInc(),cache->get_cubeInc()), pixelBuffer); 
 		gettimeofday(&end, NULL);
 		deltaR += ((end.tv_sec  - st.tv_sec) * 1000000u + end.tv_usec - st.tv_usec) / 1.e6;
 		timingR += ((end.tv_sec  - st.tv_sec) * 1000000u + end.tv_usec - st.tv_usec) / 1.e6;

@@ -32,18 +32,20 @@ int main(int argc, char ** argv)
 	params.fov_W = 35.0f;
 	params.distance = 50.0f;
 	params.numRayPx = 1;
-	params.maxElementsCache = 2000;
-	params.maxElementsCache_CPU = 15000;
+	params.maxElementsCache = 28000;
+	params.maxElementsCache_CPU = 30000;
 	params.dimCubeCache = make_int3(32,32,32);
 	params.cubeInc = 2;
+	params.octreeLevel = 8;
 	params.hdf5File = argv[1];
 	params.dataset_name = argv[2];
 	params.octreeFile = argv[3];
 
 	visualTur * VisualTur = new visualTur(params); 
 
-	VisualTur->camera_Move(make_float3(512.0f, 152.0f, 200.0f));
+	VisualTur->camera_Move(make_float3(512.0f, 256.0f, 500.0f));
 	VisualTur->camera_MoveForward(1.0f);
+	VisualTur->camera_RotateY(-90.0f);
 
 	FreeImage_Initialise();
 
@@ -67,10 +69,9 @@ int main(int argc, char ** argv)
 
 	std::cerr<<"Cuda mem set: "<<cudaGetErrorString(cudaMemset((void *)screenG,0,sizeof(float)*H*W*4))<<std::endl;		
 
-	double total =0;
 	struct timeval st, end;
 	gettimeofday(&st, NULL);
-	for(int m=0; m<100; m++)
+	for(int m=0; m<10000; m++)
 	{ 
 		for(int i=0; i<H; i++)
 			for(int j=0; j<W; j++)
@@ -82,7 +83,7 @@ int main(int argc, char ** argv)
 				screenC[id*4+3]= 0.0f;
 			} 
 
-		VisualTur->updateVisibleCubes(8, screenG);
+		VisualTur->updateVisibleCubes(screenG);
 
 		std::cerr<<"Retrieve screen from GPU: "<< cudaGetErrorString(cudaMemcpy((void*) screenC, (const void*) screenG, sizeof(float)*W*H*4, cudaMemcpyDeviceToHost))<<std::endl;
 
@@ -102,7 +103,7 @@ int main(int argc, char ** argv)
 		std::stringstream name;
 		name<<"prueba"<<m<<".png";
 		FreeImage_Save(FIF_PNG, bitmap, name.str().c_str(), 0);
-		VisualTur->camera_MoveForward(10.0f);
+		VisualTur->camera_StrafeRight(0.5f);
 	}
 	gettimeofday(&end, NULL);
 	double delta = ((end.tv_sec  - st.tv_sec) * 1000000u + end.tv_usec - st.tv_usec) / 1.e6;

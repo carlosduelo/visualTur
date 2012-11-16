@@ -24,7 +24,7 @@ Camera::Camera(int nRP, int p_H, int p_W, float p_d, float p_fov_h, float p_fov_
 	RotatedZ	= 0.0;	
 
 	numRays	= screen->get_H()*screen->get_W()*numRayPixel*numRayPixel;
-	std::cerr<<"Allocating memory camera directions buffer: "<< cudaGetErrorString(cudaMalloc(&rayDirections, numRays*sizeof(float3))) << std::endl;
+	std::cerr<<"Allocating memory camera directions buffer: "<<numRays*sizeof(float3)/1024/1024 << " MB: "<< cudaGetErrorString(cudaMalloc(&rayDirections, numRays*sizeof(float3))) << std::endl;
 
 	UpdateRays();
 }
@@ -224,7 +224,7 @@ void		Camera::set_H(int pH)
 	numRays = screen->get_H()*screen->get_W()*numRayPixel*numRayPixel;
 
 	cudaFree(rayDirections);
-        std::cerr<<"Allocating memory camera directions buffer: "<< cudaGetErrorString(cudaMalloc(&rayDirections, numRays*sizeof(float3))) << std::endl;
+	std::cerr<<"Allocating memory camera directions buffer: "<<numRays*sizeof(float3)/1024/1024 << " MB: "<< cudaGetErrorString(cudaMalloc(&rayDirections, numRays*sizeof(float3))) << std::endl;
 
         UpdateRays();
 }
@@ -236,7 +236,7 @@ void		Camera::set_W(int pW)
 	numRays = screen->get_H()*screen->get_W()*numRayPixel*numRayPixel;
 
 	cudaFree(rayDirections);
-        std::cerr<<"Allocating memory camera directions buffer: "<< cudaGetErrorString(cudaMalloc(&rayDirections, numRays*sizeof(float3))) << std::endl;
+	std::cerr<<"Allocating memory camera directions buffer: "<<numRays*sizeof(float3)/1024/1024 << " MB: "<< cudaGetErrorString(cudaMalloc(&rayDirections, numRays*sizeof(float3))) << std::endl;
 
         UpdateRays();
 }
@@ -248,7 +248,7 @@ void		Camera::set_Distance(float pd)
 	numRays = screen->get_H()*screen->get_W()*numRayPixel*numRayPixel;
 
 	cudaFree(rayDirections);
-        std::cerr<<"Allocating memory camera directions buffer: "<< cudaGetErrorString(cudaMalloc(&rayDirections, numRays*sizeof(float3))) << std::endl;
+	std::cerr<<"Allocating memory camera directions buffer: "<<numRays*sizeof(float3)/1024/1024 << " MB: "<< cudaGetErrorString(cudaMalloc(&rayDirections, numRays*sizeof(float3))) << std::endl;
 
         UpdateRays();
 }
@@ -260,7 +260,7 @@ void		Camera::set_fovH(float pfh)
 	numRays = screen->get_H()*screen->get_W()*numRayPixel*numRayPixel;
 
 	cudaFree(rayDirections);
-        std::cerr<<"Allocating memory camera directions buffer: "<< cudaGetErrorString(cudaMalloc(&rayDirections, numRays*sizeof(float3))) << std::endl;
+	std::cerr<<"Allocating memory camera directions buffer: "<<numRays*sizeof(float3)/1024/1024 << " MB: "<< cudaGetErrorString(cudaMalloc(&rayDirections, numRays*sizeof(float3))) << std::endl;
 
         UpdateRays();
 }
@@ -272,7 +272,7 @@ void		Camera::set_fovW(float pfw)
 	numRays = screen->get_H()*screen->get_W()*numRayPixel*numRayPixel;
 
 	cudaFree(rayDirections);
-        std::cerr<<"Allocating memory camera directions buffer: "<< cudaGetErrorString(cudaMalloc(&rayDirections, numRays*sizeof(float3))) << std::endl;
+	std::cerr<<"Allocating memory camera directions buffer: "<<numRays*sizeof(float3)/1024/1024 << " MB: "<< cudaGetErrorString(cudaMalloc(&rayDirections, numRays*sizeof(float3))) << std::endl;
 
         UpdateRays();
 }
@@ -283,7 +283,7 @@ void 	Camera::set_RayPerPixel(int rpp)
 	numRays = screen->get_H()*screen->get_W()*numRayPixel*numRayPixel;
 
 	cudaFree(rayDirections);
-        std::cerr<<"Allocating memory camera directions buffer: "<< cudaGetErrorString(cudaMalloc(&rayDirections, numRays*sizeof(float3))) << std::endl;
+	std::cerr<<"Allocating memory camera directions buffer: "<<numRays*sizeof(float3)/1024/1024 << " MB: "<< cudaGetErrorString(cudaMalloc(&rayDirections, numRays*sizeof(float3))) << std::endl;
 
         UpdateRays();
 }

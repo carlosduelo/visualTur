@@ -23,6 +23,7 @@ typedef struct
 	int	maxElementsCache_CPU;
 	int3	dimCubeCache;
 	int	cubeInc;
+	int 	octreeLevel;
 	// hdf5 files
 	char * hdf5File;
 	char * dataset_name;
@@ -42,6 +43,7 @@ class visualTur
 
 		Octree *	octree;
 		float 		iso;
+		int		octreeLevel;
 
 		rayCaster *	raycaster;
 
@@ -72,6 +74,6 @@ class visualTur
 		void	camera_MoveUpward(float Distance);
 		void	camera_StrafeRight(float Distance);	
 
-		void updateVisibleCubes(int level, float * pixelBuffer);
+		void updateVisibleCubes(float * pixelBuffer);
 };
 #endif

@@ -17,12 +17,13 @@ class Octree
 		int3 realDim;
 		int dimension;
 		int nLevels;
+		int maxLevel;
 		index_node_t ** octree;
 		index_node_t * 	memoryGPU;
 		int	*	sizes;
 	public:
 		/* Lee el Octree de un fichero */
-		Octree(const char * file_name, Camera * p_camera);
+		Octree(const char * file_name, Camera * p_camera, int p_maxLevel);
 
 		~Octree();
 
