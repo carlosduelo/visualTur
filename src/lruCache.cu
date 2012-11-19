@@ -178,7 +178,7 @@ void lruCache::updateCube(visibleCube_t * cube, int nLevels, int * nEinsertedCPU
 	it = indexStored.find(cube->id);
 	if ( it == indexStored.end() ) // Not exists
 	{
-		if (*nEinsertedGPU > numElements)
+		if (*nEinsertedGPU >= numElements)
 		{
 			cube->state = NOCACHED;
 			gettimeofday(&endA, NULL);
@@ -194,7 +194,7 @@ void lruCache::updateCube(visibleCube_t * cube, int nLevels, int * nEinsertedCPU
 			if ( it == indexStoredCPU.end() ) // Not exists
 			{
 
-				if (*nEinsertedCPU > numElementsCPU)
+				if (*nEinsertedCPU >= numElementsCPU)
 				{
 					cube->state = NOCACHED;
 					gettimeofday(&endA, NULL);

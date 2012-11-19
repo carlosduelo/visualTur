@@ -32,20 +32,19 @@ int main(int argc, char ** argv)
 	params.fov_W = 35.0f;
 	params.distance = 50.0f;
 	params.numRayPx = 1;
-	params.maxElementsCache = 28000;
-	params.maxElementsCache_CPU = 30000;
+	params.maxElementsCache = 10000;
+	params.maxElementsCache_CPU = 20000;
 	params.dimCubeCache = make_int3(32,32,32);
-	params.cubeInc = 2;
-	params.octreeLevel = 8;
+	params.cubeInc = 1;
+	params.octreeLevel =8;
 	params.hdf5File = argv[1];
 	params.dataset_name = argv[2];
 	params.octreeFile = argv[3];
 
 	visualTur * VisualTur = new visualTur(params); 
 
-	VisualTur->camera_Move(make_float3(512.0f, 256.0f, 500.0f));
+	VisualTur->camera_Move(make_float3(1500.0f, 128.0f, 4100.0f));
 	VisualTur->camera_MoveForward(1.0f);
-	VisualTur->camera_RotateY(-90.0f);
 
 	FreeImage_Initialise();
 

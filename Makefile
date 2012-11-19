@@ -1,8 +1,8 @@
 NVCC=nvcc
-OPT=-O3
+OPT=-O0
 CUDACP=sm_20
 CFLAGS=$(OPT) -g -Wall
-NFLAGS= $(OPT) -arch=$(CUDACP) -Xcompiler '$(CFLAGS)'
+NFLAGS=-G $(OPT) -arch=$(CUDACP) -Xcompiler '$(CFLAGS)'
 INCLUDE=-Iinc/
 LIBRARY=-lm -lhdf5 -lGL -lglut -lGLU -lfreeimage 
 
@@ -25,13 +25,17 @@ obj/rayCaster.o: src/rayCaster.cu inc/rayCaster.hpp
 obj/visualTur.o: src/visualTur.cu inc/visualTur.hpp
 	$(NVCC) -c  $(NFLAGS) $(INCLUDE) src/visualTur.cu -o obj/visualTur.o
 
-testPrograms: bin/testVisualTur bin/testFileManager
+testPrograms: bin/testVisualTur bin/testFileManager bin/testRayCaster
 
 bin/testFileManager: Objects src/testFileManager.cu
 	$(NVCC) $(NFLAGS) $(INCLUDE) obj/FileManager.o src/testFileManager.cu  -o bin/testFileManager $(LIBRARY)
 
 bin/testVisualTur: Objects src/testVisualTur.cu
 	$(NVCC) $(NFLAGS) $(INCLUDE) obj/Screen.o obj/Camera.o obj/FileManager.o  obj/lruCache.o obj/Octree.o obj/rayCaster.o obj/visualTur.o src/testVisualTur.cu  -o bin/testVisualTur $(LIBRARY)
+
+bin/testRayCaster: Objects src/testRayCaster.cu
+	$(NVCC) $(NFLAGS) $(INCLUDE) obj/Screen.o obj/Camera.o obj/FileManager.o obj/rayCaster.o src/testRayCaster.cu  -o bin/testRayCaster $(LIBRARY)
+	
 
 clean:
 	-rm bin/* obj/* ./*.i ./*.ii ./*.cudafe* ./*.fatbin* ./*.hash ./*.module_id ./*.ptx ./*sm*.cubin ./*.o
