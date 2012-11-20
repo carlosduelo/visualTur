@@ -615,21 +615,21 @@ __device__ int3 _cuda_updateCoordinates(int maxLevel, int cLevel, index_node_t c
 #if 1
 __device__ void _cuda_getFirtsVoxel(index_node_t ** octree, int * sizes, int nLevels, float3 origin, float3 ray, int finalLevel, visibleCube_t * indexNode)
 {
-	index_node_t 	stackIndex[64];
-	int		stackLevel[64];
-	int 		stackActual = -1;
-	//bool		end = false;
-	int3		minBox = make_int3(0,0,0);
-
-/*	
-	__shared__ index_node_t	stackIndexShared[BLOCK_SIZE][16];
-	__shared__ int 		stackLevelShared[BLOCK_SIZE][16];
-	index_node_t *	stackIndex = &stackIndexShared[threadIdx.x][0];
-	int	     *	stackLevel = &stackLevelShared[threadIdx.x][0];
-*/	
 
 	if (indexNode->state ==  NOCUBE)
 	{
+		index_node_t 	stackIndex[64];
+		int		stackLevel[64];
+		int 		stackActual = -1;
+		//bool		end = false;
+		int3		minBox = make_int3(0,0,0);
+
+	/*	
+		__shared__ index_node_t	stackIndexShared[BLOCK_SIZE][16];
+		__shared__ int 		stackLevelShared[BLOCK_SIZE][16];
+		index_node_t *	stackIndex = &stackIndexShared[threadIdx.x][0];
+		int	     *	stackLevel = &stackLevelShared[threadIdx.x][0];
+	*/	
 		stackActual++;
 		stackIndex[0] = 1;
 		stackLevel[0] = 0;
@@ -717,6 +717,7 @@ __device__ void _cuda_getFirtsVoxel(index_node_t ** octree, int * sizes, int nLe
 						if (nextNode)
 						{
 							indexNode->id = children[i];
+							indexNode->state = CUBE;
 							return;
 						}
 						else if (indexNode->id == children[i])

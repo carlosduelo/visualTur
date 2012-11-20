@@ -296,7 +296,8 @@ void lruCache::updateCache(visibleCube_t * visibleCubes, int num, int nLevels)
 
 	for(int i=0; i<num; i++)
 	{
-		if (visibleCubes[i].id != 0 && visibleCubes[i].state != PAINTED)
+		if (visibleCubes[i].state == NOCACHED || visibleCubes[i].state == CUBE)
+		//if (visibleCubes[i].id != 0 && visibleCubes[i].state != PAINTED)
 		{
 			updateCube(&visibleCubes[i], nLevels, &newCubesC, &newCubesG);
 		}

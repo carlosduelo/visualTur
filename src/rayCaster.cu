@@ -140,20 +140,22 @@ __global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3
 {
 	unsigned int tid = blockIdx.y * blockDim.x * gridDim.y + blockIdx.x * blockDim.x + threadIdx.x;
 
-	if (tid < (W*H) && cube[tid].state != PAINTED && cube[tid].state != NOCACHED)
+	if (tid < (W*H))
 	{
+		
 		float tnear;
 		float tfar;
 		// To do test intersection real cube position
 		int3 minBox = getMinBoxIndex2(cube[tid].id, level, nLevel);
 		int3 maxBox = minBox + dimCube;
-		bool hit = false;
-		float3 Xnear;
-		float3 Xfar;
-		float3 Xnew;
 		
 		if  (cube[tid].state == CACHED && _cuda_RayAABB(origin, rays[tid],  &tnear, &tfar, minBox, maxBox))
 		{
+			bool hit = false;
+			float3 Xnear;
+			float3 Xfar;
+			float3 Xnew;
+
 			// To ray caster is needed bigger cube, so add cube inc
 			minBox -= cubeInc;
 			maxBox = dimCube + 2*cubeInc;
@@ -164,10 +166,15 @@ __global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3
 			bool 				primera 	= true;
 			float 				ant		= 0.0;
 			float				sig		= 0.0;
-			float steps = 0;
-			float3 vStep = 0.5 * rays[tid];
-			float maxStep = (tfar-tnear)/0.5;
-			
+			int steps = 0;
+			float3 vStep = 0.5* rays[tid];
+			int  maxStep = ceil((tfar-tnear)/0.5);
+
+/* CASOS A ESTUDIAR
+tnear==tfar MISS
+tfar<tnear MISS
+tfar-tfar< step STUDY BETWEEN POINTS
+*/
 
 			while(steps <= maxStep)
 			{
@@ -217,32 +224,32 @@ __global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3
 				Xnear += vStep;
 				steps++;
 			}
-		}
+			if (hit)
+			{
+				float3 n = getNormal(Xnew, cube[tid].data, minBox,  maxBox);
+				float3 l = Xnew - ligth;
+				l = normalize(l);	
+				float dif = fabs(n.x*l.x + n.y*l.y + n.z*l.z);
 
-		if (hit)
-		{
-			float3 n = getNormal(Xnew, cube[tid].data, minBox,  maxBox);
-			float3 l = Xnew - ligth;
-			l = normalize(l);	
-			float dif = fabs(n.x*l.x + n.y*l.y + n.z*l.z);
-
-			float a = Xnew.y/256.0f;
-			screen[tid*4]   =(1-a)*dif;// + 1.0f*spec;
-			screen[tid*4+1] =(a)*dif;// + 1.0f*spec;
-			screen[tid*4+2] =0.0f*dif;// + 1.0f*spec;
-			screen[tid*4+3] = 1.0f;
-			cube[tid].state= PAINTED;
+				float a = Xnew.y/256.0f;
+				screen[tid*4]   =(1-a)*dif;// + 1.0f*spec;
+				screen[tid*4+1] =(a)*dif;// + 1.0f*spec;
+				screen[tid*4+2] =0.0f*dif;// + 1.0f*spec;
+				screen[tid*4+3] = 1.0f;
+				cube[tid].state= PAINTED;
+			}
+			else
+			{
+				cube[tid].state = NOCUBE;
+			}
 		}
-		else
+		else if (cube[tid].state == NOCUBE)
 		{
 			screen[tid*4] = 1.0f; 
 			screen[tid*4+1] = 1.0f; 
 			screen[tid*4+2] = 1.0f; 
 			screen[tid*4+3] = 1.0f; 
-			if (cube[tid].id == 0)
-				cube[tid].state = PAINTED;
-			else
-				cube[tid].state = NOCUBE;
+			cube[tid].state = PAINTED;
 		}
 	}
 }

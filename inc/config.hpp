@@ -4,6 +4,7 @@
 /* indentifier type for octree's node */
 typedef unsigned long long index_node_t;
 
+#define CUBE		(unsigned char)8
 #define PAINTED 	(unsigned char)4
 #define CACHED 		(unsigned char)2
 #define NOCACHED 	(unsigned char)1
