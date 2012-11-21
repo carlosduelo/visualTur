@@ -98,13 +98,15 @@ NodeLinkedList * LinkedList::moveToLastPosition(NodeLinkedList * node)
 	}
 }
 
-lruCache::lruCache(char * file_name, char * dataset_name, int maxElements, int3 cDim, int cI, int maxElementsCPU)
+lruCache::lruCache(char * file_name, char * dataset_name, int maxElements, int3 cDim, int cI, int levelC, int nLevelsO, int maxElementsCPU)
 {
 	numElements 	= maxElements;
 	numElementsCPU 	= maxElementsCPU;
 	cubeDim 	= cDim;
 	cubeInc		= make_int3(cI,cI,cI);
 	realcubeDim	= cubeDim + 2 * cubeInc;
+	levelCube	= levelC;
+	levelOctree	= nLevelsO;
 	offsetCube	= (cubeDim.x+2*cubeInc.x)*(cubeDim.y+2*cubeInc.y)*(cubeDim.z+2*cubeInc.z);
 	queuePositions  = new LinkedList(numElements);
 	queuePositionsCPU = new LinkedList(numElementsCPU);
@@ -168,19 +170,21 @@ void lruCache::updateCube(visibleCube_t * cube, int nLevels, int * nEinsertedCPU
 	
 	struct timeval stA, endA;
 	access++;
-	//std::map<index_node_t, NodeLinkedList *>::iterator it;
-	boost::unordered_map<index_node_t, NodeLinkedList *>::iterator it;
+	std::map<index_node_t, NodeLinkedList *>::iterator it;
+	//boost::unordered_map<index_node_t, NodeLinkedList *>::iterator it;
 	unsigned posC = 0;
 	unsigned posG = 0;
+	index_node_t idCube = cube->id >> (3*(levelOctree-levelCube));
 
 	gettimeofday(&stA, NULL);
 	// Update in GPU cache
-	it = indexStored.find(cube->id);
+	it = indexStored.find(idCube);
 	if ( it == indexStored.end() ) // Not exists
 	{
 		if (*nEinsertedGPU >= numElements)
 		{
 			cube->state = NOCACHED;
+			cube->cubeID = idCube;
 			gettimeofday(&endA, NULL);
 			timingAccess += ((endA.tv_sec  - stA.tv_sec) * 1000000u + endA.tv_usec - stA.tv_usec) / 1.e6;
 			//std::cout<<"---------------------------------------------------------------------------------->"<<std::endl;
@@ -189,7 +193,7 @@ void lruCache::updateCube(visibleCube_t * cube, int nLevels, int * nEinsertedCPU
 		else
 		{
 			// Update in CPU Cache
-			it = indexStoredCPU.find(cube->id);
+			it = indexStoredCPU.find(idCube);
 
 			if ( it == indexStoredCPU.end() ) // Not exists
 			{
@@ -197,6 +201,7 @@ void lruCache::updateCube(visibleCube_t * cube, int nLevels, int * nEinsertedCPU
 				if (*nEinsertedCPU >= numElementsCPU)
 				{
 					cube->state = NOCACHED;
+					cube->cubeID = idCube;
 					gettimeofday(&endA, NULL);
 					timingAccess += ((endA.tv_sec  - stA.tv_sec) * 1000000u + endA.tv_usec - stA.tv_usec) / 1.e6;
 					return;
@@ -208,15 +213,15 @@ void lruCache::updateCube(visibleCube_t * cube, int nLevels, int * nEinsertedCPU
 
 				index_node_t removedIDcube = 0;
 				/* Get from the queue the first element, add to hashtable (index, lastPosition) and enqueue the position */
-				NodeLinkedList * node = queuePositionsCPU->getFromFirstPosition(cube->id, &removedIDcube);
+				NodeLinkedList * node = queuePositionsCPU->getFromFirstPosition(idCube, &removedIDcube);
 
 				posC = node->element; 
 
-				indexStoredCPU.insert(std::pair<int, NodeLinkedList *>(cube->id, node));
+				indexStoredCPU.insert(std::pair<int, NodeLinkedList *>(idCube, node));
 				if (removedIDcube != 0)
 					indexStoredCPU.erase(indexStoredCPU.find(removedIDcube));
-				int level = getIndexLevel(cube->id);
-				int3 coord = getMinBoxIndex2(cube->id, level, nLevels);
+				int level = getIndexLevel(idCube);
+				int3 coord = getMinBoxIndex2(idCube, level, nLevels);
 				int3 minBox = coord - cubeInc;
 				int3 maxBox = minBox + realcubeDim;
 				fileManager->readHDF5_Voxel_Array(minBox, maxBox, cacheDataCPU + posC*offsetCube);
@@ -249,15 +254,16 @@ void lruCache::updateCube(visibleCube_t * cube, int nLevels, int * nEinsertedCPU
 
 			index_node_t removedIDcube = 0;
 			/* Get from the queue the first element, add to hashtable (index, lastPosition) and enqueue the position */
-			NodeLinkedList * node = queuePositions->getFromFirstPosition(cube->id, &removedIDcube);
+			NodeLinkedList * node = queuePositions->getFromFirstPosition(idCube, &removedIDcube);
 
 			posG = node->element; 
 
-			indexStored.insert(std::pair<int, NodeLinkedList *>(cube->id, node));
+			indexStored.insert(std::pair<int, NodeLinkedList *>(idCube, node));
 			if (removedIDcube != 0)
 				indexStored.erase(indexStored.find(removedIDcube));
 			cube->data = cacheData + posG*offsetCube;
 			cube->state = CACHED;
+			cube->cubeID = idCube;
 			std::cerr<<"Creating cache in GPU: "<<cudaGetErrorString(cudaMemcpy((void*) cube->data, (const void*) (cacheDataCPU + posC*offsetCube), offsetCube*sizeof(float), cudaMemcpyHostToDevice))<<std::endl;
 
 			(*nEinsertedGPU)++;
@@ -279,6 +285,7 @@ void lruCache::updateCube(visibleCube_t * cube, int nLevels, int * nEinsertedCPU
 		queuePositions->moveToLastPosition(node);
 		cube->data = cacheData + posG*offsetCube;
 		cube->state = CACHED;
+		cube->cubeID = idCube;
 
 		gettimeofday(&end, NULL);
 		timinghitsGPU += ((end.tv_sec  - st.tv_sec) * 1000000u + end.tv_usec - st.tv_usec) / 1.e6;

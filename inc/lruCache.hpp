@@ -8,8 +8,8 @@
 #include "config.hpp"
 #include "FileManager.hpp"
 #include "cutil_math.h"
-//#include <map>
-#include <boost/unordered_map.hpp>
+#include <map>
+//#include <boost/unordered_map.hpp>
 #include <sys/time.h>
 
 
@@ -49,12 +49,14 @@ class lruCache
 		int3					 cubeInc;
 		int3					 realcubeDim;
 		int					 offsetCube;
+		int					 levelCube;
+		int					 levelOctree;
 
-		//std::map<index_node_t, NodeLinkedList *> indexStoredCPU;
-		boost::unordered_map<index_node_t, NodeLinkedList *> indexStoredCPU;
+		std::map<index_node_t, NodeLinkedList *> indexStoredCPU;
+		//boost::unordered_map<index_node_t, NodeLinkedList *> indexStoredCPU;
 		LinkedList	*			 queuePositionsCPU;
-		//std::map<index_node_t, NodeLinkedList *> indexStored;
-		boost::unordered_map<index_node_t, NodeLinkedList *> indexStored;
+		std::map<index_node_t, NodeLinkedList *> indexStored;
+		//boost::unordered_map<index_node_t, NodeLinkedList *> indexStored;
 		LinkedList	*			 queuePositions;
 
 		float		*			 cacheData;
@@ -79,7 +81,7 @@ class lruCache
 		#endif
 		void updateCube(visibleCube_t * cube, int nLevels, int * nEinsertedCPU, int * nEinsertedGPU);
 	public:
-		lruCache(char * file_name, char * dataset_name, int maxElements, int3 cDim, int cI, int maxElementsCPU);
+		lruCache(char * file_name, char * dataset_name, int maxElements, int3 cDim, int cI, int levelC, int nLevelsO, int maxElementsCPU);
 		
 		~lruCache();
 

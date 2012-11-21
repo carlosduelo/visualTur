@@ -32,10 +32,11 @@ int main(int argc, char ** argv)
 	params.fov_W = 35.0f;
 	params.distance = 50.0f;
 	params.numRayPx = 1;
-	params.maxElementsCache = 750000;
-	params.maxElementsCache_CPU = 900000;
-	params.dimCubeCache = make_int3(8,8,8);
+	params.maxElementsCache = 3500;
+	params.maxElementsCache_CPU = 5000;
+	params.dimCubeCache = make_int3(64,64,64);
 	params.cubeInc = 2;
+	params.levelCubes = 7;
 	params.octreeLevel =10;
 	params.hdf5File = argv[1];
 	params.dataset_name = argv[2];
@@ -72,7 +73,7 @@ int main(int argc, char ** argv)
 
 	struct timeval st, end;
 	gettimeofday(&st, NULL);
-	for(int m=0; m<10000; m++)
+	for(int m=0; m<10; m++)
 	{ 
 		for(int i=0; i<H; i++)
 			for(int j=0; j<W; j++)

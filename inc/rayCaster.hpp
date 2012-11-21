@@ -16,6 +16,9 @@ class rayCaster
 		// Light 
 		float3			lightPosition;
 		// Material parameters
+
+		// rayCasing Parameters
+		float step;
 	public:
 		rayCaster(float isosurface, float3 lposition);
 

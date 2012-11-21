@@ -15,6 +15,7 @@ typedef struct
 	index_node_t 	id;
 	float * 	data;
 	unsigned char   state;
+	index_node_t	cubeID;
 } visibleCube_t;
 
 #endif

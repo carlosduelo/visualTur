@@ -142,114 +142,120 @@ __global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3
 
 	if (tid < (W*H))
 	{
-		
-		float tnear;
-		float tfar;
-		// To do test intersection real cube position
-		int3 minBox = getMinBoxIndex2(cube[tid].id, level, nLevel);
-		int3 maxBox = minBox + dimCube;
-		
-		if  (cube[tid].state == CACHED && _cuda_RayAABB(origin, rays[tid],  &tnear, &tfar, minBox, maxBox))
-		{
-			bool hit = false;
-			float3 Xnear;
-			float3 Xfar;
-			float3 Xnew;
-
-			// To ray caster is needed bigger cube, so add cube inc
-			minBox -= cubeInc;
-			maxBox = dimCube + 2*cubeInc;
-			Xnear = origin + tnear * rays[tid];
-			Xfar  = Xnear;
-			Xnew  = Xnear;
-			//float * cubeD = cube[tid].data;
-			bool 				primera 	= true;
-			float 				ant		= 0.0;
-			float				sig		= 0.0;
-			int steps = 0;
-			float3 vStep = 0.5* rays[tid];
-			int  maxStep = ceil((tfar-tnear)/0.5);
-
-/* CASOS A ESTUDIAR
-tnear==tfar MISS
-tfar<tnear MISS
-tfar-tfar< step STUDY BETWEEN POINTS
-*/
-
-			while(steps <= maxStep)
-			{
-				if (primera)
-				{
-					primera = false;
-					ant = getElementInterpolate(Xnear, cube[tid].data, minBox, maxBox);
-					Xfar = Xnear;
-				}
-				else
-				{
-					sig = getElementInterpolate(Xnear, cube[tid].data, minBox, maxBox);
-					if (( ((iso-ant)<0.0) && ((iso-sig)<0.0)) || ( ((iso-ant)>0.0) && ((iso-sig)>0.0)))
-					{
-						ant = sig;
-						Xfar=Xnear;
-					}
-					else
-					{
-						/*
-						Si el valor en los extremos es V_s y V_f y el valor que buscas (el de la isosuperficie) es V, S es el punto inicial y F es el punto final.
-						a = (V - V_s) / (V_f - V_s)
-						I = S * (1 - a) + V * a  (creo que esta fórmula te la puse al revés en el caso del color, revísala) 
-						*/
-						
-						#if 0
-						// Intersection Refinament using an iterative bisection procedure
-						float valueE = 0.0;
-						for(int k = 0; k<5;k++) // XXX Cuanto más grande mejor debería ser el renderizado
-						{
-							Xnew = (Xfar - Xnear)*((iso-sig)/(ant-sig))+Xnear;
-							valueE = getElementInterpolate(Xnew, cube[tid].data, minBox, maxBox);
-							if (valueE>iso)
-								Xnear=Xnew;
-							else
-								Xfar=Xnew;
-						}
-						#endif
-						float a = (iso-ant)/(sig-ant);
-						Xnew = Xfar*(1.0f-a)+ Xnear*a;
-						hit = true;
-						steps = maxStep;
-					}
-					
-				}
-
-				Xnear += vStep;
-				steps++;
-			}
-			if (hit)
-			{
-				float3 n = getNormal(Xnew, cube[tid].data, minBox,  maxBox);
-				float3 l = Xnew - ligth;
-				l = normalize(l);	
-				float dif = fabs(n.x*l.x + n.y*l.y + n.z*l.z);
-
-				float a = Xnew.y/256.0f;
-				screen[tid*4]   =(1-a)*dif;// + 1.0f*spec;
-				screen[tid*4+1] =(a)*dif;// + 1.0f*spec;
-				screen[tid*4+2] =0.0f*dif;// + 1.0f*spec;
-				screen[tid*4+3] = 1.0f;
-				cube[tid].state= PAINTED;
-			}
-			else
-			{
-				cube[tid].state = NOCUBE;
-			}
-		}
-		else if (cube[tid].state == NOCUBE)
+	
+		if (cube[tid].state == NOCUBE)
 		{
 			screen[tid*4] = 1.0f; 
 			screen[tid*4+1] = 1.0f; 
 			screen[tid*4+2] = 1.0f; 
 			screen[tid*4+3] = 1.0f; 
 			cube[tid].state = PAINTED;
+			return;
+		}
+		else if (cube[tid].state == CACHED)
+		{
+			float tnear;
+			float tfar;
+			// To do test intersection real cube position
+			int3 minBox = getMinBoxIndex2(cube[tid].id, level, nLevel);
+			int dim = powf(2,nLevel-level);
+			int3 maxBox = minBox + make_int3(dim,dim,dim);
+			
+			if  (_cuda_RayAABB(origin, rays[tid],  &tnear, &tfar, minBox, maxBox))
+			{
+				bool hit = false;
+				float3 Xnear;
+				float3 Xfar;
+				float3 Xnew;
+
+				// To ray caster is needed bigger cube, so add cube inc
+				int level = 0;
+				minBox = getMinBoxIndex(cube[tid].cubeID, &level, nLevel) - cubeInc;
+				maxBox = dimCube + 2*cubeInc;
+				Xnear = origin + tnear * rays[tid];
+				Xfar  = Xnear;
+				Xnew  = Xnear;
+				//float * cubeD = cube[tid].data;
+				bool 				primera 	= true;
+				float 				ant		= 0.0;
+				float				sig		= 0.0;
+				int steps = 0;
+				float3 vStep = 0.5* rays[tid];
+				int  maxStep = ceil((tfar-tnear)/0.5);
+
+	/* CASOS A ESTUDIAR
+	tnear==tfar MISS
+	tfar<tnear MISS
+	tfar-tfar< step STUDY BETWEEN POINTS
+	*/
+
+				while(steps <= maxStep)
+				{
+					if (primera)
+					{
+						primera = false;
+						ant = getElementInterpolate(Xnear, cube[tid].data, minBox, maxBox);
+						Xfar = Xnear;
+					}
+					else
+					{
+						sig = getElementInterpolate(Xnear, cube[tid].data, minBox, maxBox);
+						if (( ((iso-ant)<0.0) && ((iso-sig)<0.0)) || ( ((iso-ant)>0.0) && ((iso-sig)>0.0)))
+						{
+							ant = sig;
+							Xfar=Xnear;
+						}
+						else
+						{
+							/*
+							Si el valor en los extremos es V_s y V_f y el valor que buscas (el de la isosuperficie) es V, S es el punto inicial y F es el punto final.
+							a = (V - V_s) / (V_f - V_s)
+							I = S * (1 - a) + V * a  (creo que esta fórmula te la puse al revés en el caso del color, revísala) 
+							*/
+							
+							#if 0
+							// Intersection Refinament using an iterative bisection procedure
+							float valueE = 0.0;
+							for(int k = 0; k<5;k++) // XXX Cuanto más grande mejor debería ser el renderizado
+							{
+								Xnew = (Xfar - Xnear)*((iso-sig)/(ant-sig))+Xnear;
+								valueE = getElementInterpolate(Xnew, cube[tid].data, minBox, maxBox);
+								if (valueE>iso)
+									Xnear=Xnew;
+								else
+									Xfar=Xnew;
+							}
+							#endif
+							float a = (iso-ant)/(sig-ant);
+							Xnew = Xfar*(1.0f-a)+ Xnear*a;
+							hit = true;
+							steps = maxStep;
+						}
+						
+					}
+
+					Xnear += vStep;
+					steps++;
+				}
+				if (hit)
+				{
+					float3 n = getNormal(Xnew, cube[tid].data, minBox,  maxBox);
+					float3 l = Xnew - ligth;
+					l = normalize(l);	
+					float dif = fabs(n.x*l.x + n.y*l.y + n.z*l.z);
+
+					float a = Xnew.y/256.0f;
+					screen[tid*4]   =(1-a)*dif;// + 1.0f*spec;
+					screen[tid*4+1] =(a)*dif;// + 1.0f*spec;
+					screen[tid*4+2] =0.0f*dif;// + 1.0f*spec;
+					screen[tid*4+3] = 1.0f;
+					cube[tid].state= PAINTED;
+				}
+				else
+				{
+					cube[tid].state = NOCUBE;
+				}
+			}
 		}
 	}
 }

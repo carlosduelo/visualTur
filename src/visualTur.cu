@@ -17,12 +17,12 @@ visualTur::visualTur(visualTurParams_t initParams)
 	std::cerr<<"Allocating memory visibleCubesGPU "<<camera->get_numRays()*sizeof(visibleCube_t)/1024/1024 <<" MB : "<< cudaGetErrorString(cudaMalloc((void**)&visibleCubesGPU, camera->get_numRays()*sizeof(visibleCube_t)))<<std::endl;
 	resetVisibleCubes();
 
-	// Cache creation
-	cache = new lruCache(initParams.hdf5File, initParams.dataset_name, initParams.maxElementsCache, initParams.dimCubeCache, initParams.cubeInc, initParams.maxElementsCache_CPU);
-
 	octreeLevel = initParams.octreeLevel;
 	// Create octree
 	octree = new Octree(initParams.octreeFile, camera, octreeLevel);
+
+	// Cache creation
+	cache = new lruCache(initParams.hdf5File, initParams.dataset_name, initParams.maxElementsCache, initParams.dimCubeCache, initParams.cubeInc, initParams.levelCubes, initParams.octreeLevel,initParams.maxElementsCache_CPU);
 
 	// Create rayCaster
 	raycaster = new rayCaster(octree->getIsosurface(), make_float3(0.0f, 512.0f, 0.0f));

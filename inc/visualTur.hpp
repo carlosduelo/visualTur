@@ -11,24 +11,25 @@
 
 typedef struct
 {
-	// Camera stuff
+	// Camera settings
 	int 	W;
 	int 	H;
 	float 	distance;
 	float 	fov_H;
 	float	fov_W;
 	int	numRayPx;
-	// Cube Cache stuff
+	// Cube Cache settings
 	int	maxElementsCache;
 	int	maxElementsCache_CPU;
 	int3	dimCubeCache;
 	int	cubeInc;
-	int 	octreeLevel;
-	// hdf5 files
+	int	levelCubes;
+	// hdf5 settings
 	char * hdf5File;
 	char * dataset_name;
-	// octree file
-	char * octreeFile;
+	// octree settings
+	char *  octreeFile;
+	int 	octreeLevel;
 } visualTurParams_t;
 
 class visualTur
