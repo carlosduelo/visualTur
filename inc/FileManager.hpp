@@ -30,6 +30,8 @@ class FileManager
 		 * Lee del finchero una parte 
 		 */
 		void readHDF5_Voxel_Array(int3 s, int3 e, float * data);
+
+		int CreateFile(float * volume, char * newname, char * dataset_name, int x, int y, int z);
 };
 
 #endif/*_FILE_MANAGER_H_*/

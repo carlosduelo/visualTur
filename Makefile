@@ -6,7 +6,7 @@ NFLAGS=-G $(OPT) -arch=$(CUDACP) -Xcompiler '$(CFLAGS)'
 INCLUDE=-Iinc/
 LIBRARY=-lm -lhdf5 -lGL -lglut -lGLU -lfreeimage 
 
-all: Objects testPrograms 
+all: Objects testPrograms utils
 
 Objects: obj/Screen.o obj/Camera.o obj/FileManager.o obj/lruCache.o obj/Octree.o obj/rayCaster.o obj/visualTur.o 
 
@@ -35,6 +35,11 @@ bin/testVisualTur: Objects src/testVisualTur.cu
 
 bin/testRayCaster: Objects src/testRayCaster.cu
 	$(NVCC) $(NFLAGS) $(INCLUDE) obj/Screen.o obj/Camera.o obj/FileManager.o obj/rayCaster.o src/testRayCaster.cu  -o bin/testRayCaster $(LIBRARY)
+	
+utils: bin/cutFile
+
+bin/cutFile: Objects src/cutFile.cu
+	$(NVCC) $(NFLAGS) $(INCLUDE) obj/FileManager.o src/cutFile.cu  -o bin/cutFile.cu $(LIBRARY)
 	
 
 clean:

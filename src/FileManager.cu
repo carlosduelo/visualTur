@@ -6,7 +6,6 @@
 #include <iostream>
 
 #define WHERESTR  "Error[file "<<__FILE__<<", line "<<__LINE__<<"]: "
-#define WHEREARG  __FILE__, __LINE__
 
 FileManager::FileManager(const char * file_name, const char * dataset_name)
 {
@@ -188,4 +187,79 @@ void FileManager::readHDF5_Voxel_Array(int3 s, int3 e, float * data)
 
 
 	delete[] aux;
+}
+int FileManager::CreateFile(float * volume, char * newname, char * dataset_name, int x, int y, int z)
+{
+	hid_t       file, dataset;         /* file and dataset handles */
+	hid_t       datatype, dataspace;   /* handles */
+	hsize_t     dimsf[3];              /* dataset dimensions */
+	herr_t      status;
+
+	if ((file = H5Fcreate(newname, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT)) < 0)
+	{
+		std::cerr<<WHERESTR<<" unable to create the HDF5 file"<<std::endl;
+		return -1;
+	}
+
+	dimsf[0] = (hsize_t)x;
+	dimsf[1] = (hsize_t)y;
+	dimsf[2] = (hsize_t)z;
+
+	fprintf(stdout, "New data set size (%d,%d,%d)\n",x,y,z);
+
+	if ((dataspace = H5Screate_simple(3, dimsf, NULL)) < 0)
+	{
+		std::cerr<<WHERESTR" unable to create the data space"<<std::endl;
+		exit(0);
+	}
+
+	if ((datatype = H5Tcopy(H5T_IEEE_F32LE)) < 0)
+	{
+		std::cerr<<WHERESTR" unable to create the data type"<<std::endl;
+		exit(0);
+	}
+
+	if ((status = H5Tset_order(datatype, H5T_ORDER_LE)) < 0)
+	{
+		std::cerr<<WHERESTR" unable to set order"<<std::endl;
+		exit(0);
+	}
+
+	if (( dataset = H5Dcreate2(file, dataset_name, datatype, dataspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT)) < 0)
+	{
+		std::cerr<<WHERESTR" unable to create the data set"<<std::endl;
+		exit(0);
+	}
+
+	if ((status = H5Dwrite(dataset, H5T_IEEE_F32LE, H5S_ALL, H5S_ALL, H5P_DEFAULT, volume)) < 0)
+	{
+		std::cerr<<WHERESTR" unable to write data set"<<std::endl;
+		exit(0);
+	}
+
+	if (H5Sclose(dataspace) < 0)
+	{
+		std::cerr<<WHERESTR" unable to close the dataspace"<<std::endl;
+		exit(0);
+	}
+
+	if (H5Tclose(datatype) < 0)
+	{
+		std::cerr<<WHERESTR" unable to close the datatype"<<std::endl;
+		exit(0);
+	}
+
+	if (H5Dclose(dataset) < 0)
+	{
+		std::cerr<<WHERESTR" unable to close the data set"<<std::endl;
+		exit(0);
+	}
+
+	if (H5Fclose(file) < 0)
+	{
+		std::cerr<<WHERESTR" unable to close the file"<<std::endl;
+		exit(0);
+	}
+
+	return 0;
 }

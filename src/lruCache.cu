@@ -184,7 +184,7 @@ void lruCache::updateCube(visibleCube_t * cube, int nLevels, int * nEinsertedCPU
 		if (*nEinsertedGPU >= numElements)
 		{
 			cube->state = NOCACHED;
-			cube->cubeID = idCube;
+			cube->cubeID = 0;
 			gettimeofday(&endA, NULL);
 			timingAccess += ((endA.tv_sec  - stA.tv_sec) * 1000000u + endA.tv_usec - stA.tv_usec) / 1.e6;
 			//std::cout<<"---------------------------------------------------------------------------------->"<<std::endl;
@@ -201,7 +201,7 @@ void lruCache::updateCube(visibleCube_t * cube, int nLevels, int * nEinsertedCPU
 				if (*nEinsertedCPU >= numElementsCPU)
 				{
 					cube->state = NOCACHED;
-					cube->cubeID = idCube;
+					cube->cubeID = 0;
 					gettimeofday(&endA, NULL);
 					timingAccess += ((endA.tv_sec  - stA.tv_sec) * 1000000u + endA.tv_usec - stA.tv_usec) / 1.e6;
 					return;
