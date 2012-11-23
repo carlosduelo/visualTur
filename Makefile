@@ -39,8 +39,7 @@ bin/testRayCaster: Objects src/testRayCaster.cu
 utils: bin/cutFile
 
 bin/cutFile: Objects src/cutFile.cu
-	$(NVCC) $(NFLAGS) $(INCLUDE) obj/FileManager.o src/cutFile.cu  -o bin/cutFile.cu $(LIBRARY)
-	
+	$(NVCC) $(NFLAGS) $(INCLUDE) obj/FileManager.o src/cutFile.cu  -o bin/cutFile $(LIBRARY)
 
 clean:
 	-rm bin/* obj/* ./*.i ./*.ii ./*.cudafe* ./*.fatbin* ./*.hash ./*.module_id ./*.ptx ./*sm*.cubin ./*.o

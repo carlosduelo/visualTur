@@ -169,8 +169,8 @@ __global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3
 				float3 Xnew;
 
 				// To ray caster is needed bigger cube, so add cube inc
-				int level = 0;
-				minBox = getMinBoxIndex(cube[tid].cubeID, &level, nLevel) - cubeInc;
+				int levelC = 0;
+				minBox = getMinBoxIndex(cube[tid].cubeID, &levelC, nLevel) - cubeInc;
 				maxBox = dimCube + 2*cubeInc;
 				Xnear = origin + tnear * rays[tid];
 				Xfar  = Xnear;
