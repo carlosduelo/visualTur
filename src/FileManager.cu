@@ -1,6 +1,7 @@
 #include "FileManager.hpp"
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <sstream>
 #include <stdexcept>
 #include <iostream>
@@ -84,9 +85,12 @@ int FileManager::readHDF5(float * volume)
 
 void FileManager::readHDF5_Voxel_Array(int3 s, int3 e, float * data)
 {
-	hsize_t dim[3] = {abs(e.x-s.x),abs(e.y-s.y),abs(e.z-s.z),};
+	hsize_t dim[3] = {abs(e.x-s.x),abs(e.y-s.y),abs(e.z-s.z)};
 
-	// Container todo a 0's
+	// Set zeros's
+	bzero(data, dim[0]*dim[1]*dim[2]*sizeof(float));
+
+	// The data required is completly outside of the dataset
 	if (s.x >= (int)this->dims[0] || s.y >= (int)this->dims[1] || s.z >= (int)this->dims[2] || e.x < 0 || e.y < 0 || e.z < 0)
 	{
 		std::cerr<<"Warning: reading cube outsite the volume "<<std::endl;
@@ -96,25 +100,24 @@ void FileManager::readHDF5_Voxel_Array(int3 s, int3 e, float * data)
 		std::cerr<<"end "<<e.x<<" "<<e.y<<" "<<e.z<<std::endl;
 		std::cerr<<"Dimension cube "<<dim[0]<<" "<<dim[1]<<" "<<dim[2]<<std::endl;
 		#endif
-		for(unsigned int i=0; i<(dim[0]*dim[1]*dim[2]); i++)
-			data[i] = 0.0;
 		return;
 	}
 
 	herr_t	status;
 	hid_t	memspace; 
-	hsize_t offset_out[3] 	= {0,0,0};
+	hsize_t offset_out[3] 	= {s.x < 0 ? abs(s.x) : 0, s.y < 0 ? abs(s.y) : 0, s.z < 0 ? abs(s.z) : 0};
 	hsize_t offset[3] 	= {s.x < 0 ? 0 : s.x, s.y < 0 ? 0 : s.y, s.z < 0 ? 0 : s.z};
 	hsize_t dimR[3]		= {e.x > (int)this->dims[0] ? this->dims[0] - offset[0] : e.x - offset[0],
 				   e.y > (int)this->dims[1] ? this->dims[1] - offset[1] : e.y - offset[1],
 				   e.z > (int)this->dims[2] ? this->dims[2] - offset[2] : e.z - offset[2]};
 
-	float * aux = new float[dimR[0]*dimR[1]*dimR[2]];
-
 	#if 0
-	std::cout<<"--"<<offset[0]<<" "<<offset[1]<<" "<<offset[2]<<std::endl;
-	std::cout<<"--"<<dimR[0]<<" "<<dimR[1]<<" "<<dimR[2]<<std::endl;
+	std::cout<<"Dimension cube "<<dim[0]<<" "<<dim[1]<<" "<<dim[2]<<std::endl;
+	std::cout<<"Dimension hyperSlab "<<dimR[0]<<" "<<dimR[1]<<" "<<dimR[2]<<std::endl;
+	std::cout<<"Offset in "<<offset[0]<<" "<<offset[1]<<" "<<offset[2]<<std::endl;
+	std::cout<<"Offset out "<<offset_out[0]<<" "<<offset_out[1]<<" "<<offset_out[2]<<std::endl;
 	#endif
+
 
 	/* 
 	* Define hyperslab in the dataset. 
@@ -128,9 +131,10 @@ void FileManager::readHDF5_Voxel_Array(int3 s, int3 e, float * data)
 	/*
 	* Define the memory dataspace.
 	*/
-	if ((memspace = H5Screate_simple(3, dimR, NULL)) < 0)
+	if ((memspace = H5Screate_simple(3, dim, NULL)) < 0)
+	//if ((memspace = H5Screate_simple(3, dimR, NULL)) < 0)
 	{
-		std::cerr<<WHERESTR<<" defining the memory dataspace"<<std::endl;
+		std::cerr<<WHERESTR<<" defining the memory space"<<std::endl;
 		return; 
 	}
 
@@ -148,46 +152,20 @@ void FileManager::readHDF5_Voxel_Array(int3 s, int3 e, float * data)
 	* Read data from hyperslab in the file into the hyperslab in 
 	* memory and display.
 	*/
-	if ((status = H5Dread(dataset_id, H5T_IEEE_F32LE, memspace, spaceid, H5P_DEFAULT, aux)) < 0)
+	if ((status = H5Dread(dataset_id, H5T_IEEE_F32LE, memspace, spaceid, H5P_DEFAULT, data)) < 0)
 	{
 		std::cerr<<WHERESTR<<" reading data from hyperslab un the file"<<std::endl;
 		return;
 	}
 
-	hsize_t dimS[3] = {s.x >= 0 ? 0 : abs(s.x), s.y >= 0 ? 0 : abs(s.y), s.z >= 0 ? 0 : abs(s.z)};
-	hsize_t dimI[3] = {dimS[0]+dimR[0], dimS[1]+dimR[1], dimS[2]+dimR[2]};
 
-	#if 0
-	std::cout<<dimS[0]<<" "<<dimS[1]<<" "<<dimS[2]<<std::endl;
-	std::cout<<dimR[0]<<" "<<dimR[1]<<" "<<dimR[2]<<std::endl;
-	std::cout<<dim[0]<<" "<<dim[1]<<" "<<dim[2]<<std::endl;
-	#endif
-
-	for(unsigned int i=0; i<dimS[0]; i++)
-		for(unsigned int j=0; j<dimS[1]; j++)
-			for(unsigned int k=0; k<dimS[2]; k++)
-				data[k+j*dim[2]+i*dim[2]*dim[1]] = 0.0; 
-
-
-	for(unsigned int i=dimS[0]; i<dimI[0]; i++)
-		for(unsigned int j=dimS[1]; j<dimI[1]; j++)
-			for(unsigned int k=dimS[2]; k<dimI[2]; k++)
-				data[k+j*dim[2]+i*dim[2]*dim[1]] = aux[(k-dimS[0])+(j-dimS[1])*dimR[2]+(i-dimS[0])*dimR[1]*dimR[2]];
-		
-	for(unsigned int i=dimI[0]; i<dim[0]; i++)
-		for(unsigned int j=dimI[1]; j<dim[0]; j++)
-			for(unsigned int k=dimI[2]; k<dim[0]; k++)
-				data[k+j*dim[2]+i*dim[2]*dim[1]] = 0.0; 
-		
 	if ((status = H5Sclose(memspace)) < 0)
 	{
 		std::cerr<<WHERESTR<<" closing dataspace"<<std::endl;
 		return;
 	}
-
-
-	delete[] aux;
 }
+
 int FileManager::CreateFile(float * volume, char * newname, char * dataset_name, int x, int y, int z)
 {
 	hid_t       file, dataset;         /* file and dataset handles */

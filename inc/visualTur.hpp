@@ -41,6 +41,7 @@ class visualTur
 		visibleCube_t *	visibleCubesGPU;
 
 		lruCache *	cache;
+		int		cubeLevel;
 
 		Octree *	octree;
 		float 		iso;

@@ -220,8 +220,7 @@ void lruCache::updateCube(visibleCube_t * cube, int nLevels, int * nEinsertedCPU
 				indexStoredCPU.insert(std::pair<int, NodeLinkedList *>(idCube, node));
 				if (removedIDcube != 0)
 					indexStoredCPU.erase(indexStoredCPU.find(removedIDcube));
-				int level = getIndexLevel(idCube);
-				int3 coord = getMinBoxIndex2(idCube, level, nLevels);
+				int3 coord = getMinBoxIndex2(idCube, levelCube, nLevels);
 				int3 minBox = coord - cubeInc;
 				int3 maxBox = minBox + realcubeDim;
 				fileManager->readHDF5_Voxel_Array(minBox, maxBox, cacheDataCPU + posC*offsetCube);

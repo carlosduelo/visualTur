@@ -23,6 +23,7 @@ visualTur::visualTur(visualTurParams_t initParams)
 
 	// Cache creation
 	cache = new lruCache(initParams.hdf5File, initParams.dataset_name, initParams.maxElementsCache, initParams.dimCubeCache, initParams.cubeInc, initParams.levelCubes, initParams.octreeLevel,initParams.maxElementsCache_CPU);
+	cubeLevel = initParams.levelCubes;
 
 	// Create rayCaster
 	raycaster = new rayCaster(octree->getIsosurface(), make_float3(0.0f, 512.0f, 0.0f));
@@ -184,7 +185,7 @@ void visualTur::updateVisibleCubes(float * pixelBuffer)
 		std::cerr<<"Coping visibleCubes to GPU: "<<cudaGetErrorString(cudaMemcpy((void*) visibleCubesGPU, (const void*) visibleCubesCPU, camera->get_numRays()*sizeof(visibleCube_t), cudaMemcpyHostToDevice))<<std::endl;
 
 		gettimeofday(&st, NULL);
-		raycaster->render(camera, octreeLevel, octree->getnLevels(), visibleCubesGPU, cache->get_cubeDim(), make_int3(cache->get_cubeInc(),cache->get_cubeInc(),cache->get_cubeInc()), pixelBuffer); 
+		raycaster->render(camera, octreeLevel, cubeLevel,octree->getnLevels(), visibleCubesGPU, cache->get_cubeDim(), make_int3(cache->get_cubeInc(),cache->get_cubeInc(),cache->get_cubeInc()), pixelBuffer); 
 		gettimeofday(&end, NULL);
 		deltaR += ((end.tv_sec  - st.tv_sec) * 1000000u + end.tv_usec - st.tv_usec) / 1.e6;
 		timingR += ((end.tv_sec  - st.tv_sec) * 1000000u + end.tv_usec - st.tv_usec) / 1.e6;

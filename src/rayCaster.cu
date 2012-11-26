@@ -136,7 +136,7 @@ inline __device__ float3 getNormal(float3 pos, float * data, int3 minBox, int3 m
 			        (getElementInterpolate(make_float3(pos.x,pos.y,pos.z-1.0f),data,minBox,maxBox) - getElementInterpolate(make_float3(pos.x,pos.y,pos.z+1.0f),data,minBox,maxBox))        /2.0f));
 }			
 
-__global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3 * rays, float iso, visibleCube_t * cube, int3 dimCube, int3 cubeInc, int level, int nLevel, float * screen)
+__global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3 * rays, float iso, visibleCube_t * cube, int3 dimCube, int3 cubeInc, int levelO, int levelC, int nLevel, float * screen)
 {
 	unsigned int tid = blockIdx.y * blockDim.x * gridDim.y + blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -157,8 +157,8 @@ __global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3
 			float tnear;
 			float tfar;
 			// To do test intersection real cube position
-			int3 minBox = getMinBoxIndex2(cube[tid].id, level, nLevel);
-			int dim = powf(2,nLevel-level);
+			int3 minBox = getMinBoxIndex2(cube[tid].id, levelO, nLevel);
+			int dim = powf(2,nLevel-levelO);
 			int3 maxBox = minBox + make_int3(dim,dim,dim);
 			
 			if  (_cuda_RayAABB(origin, rays[tid],  &tnear, &tfar, minBox, maxBox))
@@ -169,13 +169,11 @@ __global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3
 				float3 Xnew;
 
 				// To ray caster is needed bigger cube, so add cube inc
-				int levelC = 0;
-				minBox = getMinBoxIndex(cube[tid].cubeID, &levelC, nLevel) - cubeInc;
+				minBox = getMinBoxIndex2(cube[tid].cubeID, levelC, nLevel) - cubeInc;
 				maxBox = dimCube + 2*cubeInc;
 				Xnear = origin + tnear * rays[tid];
 				Xfar  = Xnear;
 				Xnew  = Xnear;
-				//float * cubeD = cube[tid].data;
 				bool 				primera 	= true;
 				float 				ant		= 0.0;
 				float				sig		= 0.0;
@@ -368,13 +366,13 @@ rayCaster::~rayCaster()
 {
 }
 
-void rayCaster::render(Camera * camera, int level, int nLevel, visibleCube_t * cube, int3 cubeDim, int3 cubeInc, float * buffer)
+void rayCaster::render(Camera * camera, int levelO, int levelC, int nLevel, visibleCube_t * cube, int3 cubeDim, int3 cubeInc, float * buffer)
 {
 	dim3 threads = getThreads(camera->get_numRays());
 	dim3 blocks = getBlocks(camera->get_numRays());
 	std::cerr<<"Launching kernek blocks ("<<blocks.x<<","<<blocks.y<<","<<blocks.z<<") threads ("<<threads.x<<","<<threads.y<<","<<threads.z<<") error: "<< cudaGetErrorString(cudaGetLastError())<<std::endl;
 
-	cuda_rayCaster<<<blocks, threads>>>(camera->get_W(), camera->get_H(), lightPosition, camera->get_position(), camera->get_rayDirections(), iso, cube, cubeDim, cubeInc, level, nLevel, buffer);
+	cuda_rayCaster<<<blocks, threads>>>(camera->get_W(), camera->get_H(), lightPosition, camera->get_position(), camera->get_rayDirections(), iso, cube, cubeDim, cubeInc, levelO, levelC, nLevel, buffer);
 	std::cerr<<"Synchronizing rayCaster: " << cudaGetErrorString(cudaDeviceSynchronize()) << std::endl;
 	return;
 }

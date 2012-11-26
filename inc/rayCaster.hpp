@@ -24,7 +24,7 @@ class rayCaster
 
 		~rayCaster();
 
-		void render(Camera * camera, int level, int nLevel, visibleCube_t * cube, int3 cubeDim, int3 cubeInc, float * buffer);
+		void render(Camera * camera, int levelO, int levelC, int nLevel, visibleCube_t * cube, int3 cubeDim, int3 cubeInc, float * buffer);
 		void renderCube(Camera * camera, float * cube, int3 minBox, int3 cubeDim, int3 cubeInc, float * buffer);
 
 };
