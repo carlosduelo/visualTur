@@ -254,6 +254,12 @@ __global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3
 					cube[tid].state = NOCUBE;
 				}
 			}
+			#if _DEBUG_
+			else
+			{
+				printf("Error, octree is not working %lld %d \n",cube[tid].id, getIndexLevel(cube[tid].id));
+			}
+			#endif
 		}
 	}
 }

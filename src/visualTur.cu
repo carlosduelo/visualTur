@@ -20,6 +20,7 @@ visualTur::visualTur(visualTurParams_t initParams)
 	octreeLevel = initParams.octreeLevel;
 	// Create octree
 	octree = new Octree(initParams.octreeFile, camera, octreeLevel);
+	octree->resetState();
 
 	// Cache creation
 	cache = new lruCache(initParams.hdf5File, initParams.dataset_name, initParams.maxElementsCache, initParams.dimCubeCache, initParams.cubeInc, initParams.levelCubes, initParams.octreeLevel,initParams.maxElementsCache_CPU);
@@ -86,6 +87,7 @@ void visualTur::changeScreen(int pW, int pH, float pfovW, float pfovH, float pDi
 	visibleCubesCPU = new visibleCube_t[camera->get_numRays()];
 	std::cerr<<"Allocating memory visibleCubesGPU "<<camera->get_numRays()*sizeof(visibleCube_t)/1024/1024 <<" MB : "<< cudaGetErrorString(cudaMalloc((void**)&visibleCubesGPU, camera->get_numRays()*sizeof(visibleCube_t)))<<std::endl;
 	resetVisibleCubes();
+	octree->resetState();
 }
 
 void visualTur::changeNumRays(int pnR)
@@ -97,6 +99,7 @@ void visualTur::changeNumRays(int pnR)
 	visibleCubesCPU = new visibleCube_t[camera->get_numRays()];
 	std::cerr<<"Allocating memory visibleCubesGPU "<<camera->get_numRays()*sizeof(visibleCube_t)/1024/1024 <<" MB : "<< cudaGetErrorString(cudaMalloc((void**)&visibleCubesGPU, camera->get_numRays()*sizeof(visibleCube_t)))<<std::endl;
 	resetVisibleCubes();
+	octree->resetState();
 }
 
 void visualTur::changeCacheParameters(int nE, int3 cDim, int cInc)
@@ -109,42 +112,50 @@ void visualTur::changeCacheParameters(int nE, int3 cDim, int cInc)
 	visibleCubesCPU = new visibleCube_t[camera->get_numRays()];
 	std::cerr<<"Allocating memory visibleCubesGPU "<<camera->get_numRays()*sizeof(visibleCube_t)/1024/1024 <<" MB : "<< cudaGetErrorString(cudaMalloc((void**)&visibleCubesGPU, camera->get_numRays()*sizeof(visibleCube_t)))<<std::endl;
 	resetVisibleCubes();
+	octree->resetState();
 }
 
 void	visualTur::camera_Move(float3 Direction)
 {
 	camera->Move(Direction);
 	resetVisibleCubes();
+	octree->resetState();
 }
 void	visualTur::camera_RotateX(float Angle)
 {
 	camera->RotateX(Angle);
 	resetVisibleCubes();
+	octree->resetState();
 }
 void	visualTur::camera_RotateY(float Angle)
 {
 	camera->RotateY(Angle);
 	resetVisibleCubes();
+	octree->resetState();
 }
 void	visualTur::camera_RotateZ(float Angle)
 {
 	camera->RotateZ(Angle);
 	resetVisibleCubes();
+	octree->resetState();
 }
 void	visualTur::camera_MoveForward(float Distance)
 {
 	camera->MoveForward(Distance);
 	resetVisibleCubes();
+	octree->resetState();
 }
 void	visualTur::camera_MoveUpward(float Distance)
 {
 	camera->MoveUpward(Distance);
 	resetVisibleCubes();
+	octree->resetState();
 }
 void	visualTur::camera_StrafeRight(float Distance)
 {
 	camera->StrafeRight(Distance);
 	resetVisibleCubes();
+	octree->resetState();
 }
 
 void visualTur::updateVisibleCubes(float * pixelBuffer)
