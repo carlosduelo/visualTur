@@ -58,6 +58,7 @@ __global__ void resetCubes(visibleCube_t * cubes, int max)
 
 void visualTur::resetVisibleCubes()
 {
+
 	#if 0
 	int max = camera->get_numRays();
 	for(int i=0; i<max; i++)
@@ -68,10 +69,15 @@ void visualTur::resetVisibleCubes()
 	}
 	std::cerr<<"Coping visibleCubes CPU to GPU: "<< cudaGetErrorString(cudaMemcpy((void*)visibleCubesGPU, (const void*)visibleCubesCPU, camera->get_numRays()*sizeof(visibleCube_t), cudaMemcpyHostToDevice))<<std::endl;
 	#else
-	dim3 threads = getThreads(camera->get_numRays());
-	dim3 blocks = getBlocks(camera->get_numRays());
-	resetCubes<<<blocks, threads>>>(visibleCubesGPU, camera->get_numRays());
+		#if 1
+			std::cerr<<"Reset Cubes: "<< cudaGetErrorString(cudaMemset((void*)visibleCubesGPU, 0, camera->get_numRays()*sizeof(visibleCube_t)))<<std::endl;
+		#else
+			dim3 threads = getThreads(camera->get_numRays());
+			dim3 blocks = getBlocks(camera->get_numRays());
+			resetCubes<<<blocks, threads>>>(visibleCubesGPU, camera->get_numRays());
+		#endif
 	#endif
+
 }
 
 void visualTur::changeScreen(int pW, int pH, float pfovW, float pfovH, float pDistance)
