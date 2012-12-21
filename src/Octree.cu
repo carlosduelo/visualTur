@@ -4,11 +4,7 @@
 #include <iostream>
 #include <fstream>
 
-#if _OG_
-#define HPN 5
-#else
 #define STACK_DIM 32
-#endif
 
 /*
  **********************************************************************************************
@@ -619,176 +615,6 @@ __device__ int3 _cuda_updateCoordinates(int maxLevel, int cLevel, index_node_t c
 	}
 }
 
-#if _OG_
-__device__ void _cuda_getFirtsVoxel(index_node_t ** octree, int * sizes, int nLevels, float3 origin, float3 ray, int finalLevel, visibleCube_t * indexNode, index_node_t * stackIndex, int * GstackActual, int * GcurrentLevel, int * numbro)
-{
-
-	if (indexNode->state ==  NOCUBE)
-	{
-		// Cargar estado
-		// cojo el puntero que apunta a memoria global
-		int 		stackActual = *GstackActual; // Lo leo de memoria global
-		int 		currentLevel = *GcurrentLevel; // Lo leo de memoria global
-
-		if (currentLevel == finalLevel)
-		{
-			stackActual--;
-			numbro[currentLevel]--;
-			while(numbro[currentLevel] == 0)
-			{
-				if (currentLevel==0)
-				{
-					indexNode->id = 0;
-					*GstackActual = stackActual; // Lo leo de memoria global
-					*GcurrentLevel = currentLevel; // Lo leo de memoria global
-					return;
-					//end = true;
-				}
-				currentLevel--;
-				numbro[currentLevel]--;
-				stackActual--;
-			}
-		}
-
-		if (stackActual < 0)
-		{
-			indexNode->id = 0;
-			*GstackActual = stackActual; // Lo leo de memoria global
-			*GcurrentLevel = currentLevel; // Lo leo de memoria global
-			return;
-			//end = true;
-		}
-		int3		minBox = getMinBoxIndex2(stackIndex[stackActual], currentLevel, nLevels);
-		index_node_t 	children[8];
-		float		tnears[8];
-		float		tfars[8];
-
-		while(1)
-		{
-			if (currentLevel == finalLevel)
-			{
-				indexNode->id = stackIndex[stackActual];
-				indexNode->state = CUBE;
-				*GstackActual = stackActual; // Lo leo de memoria global
-				*GcurrentLevel = currentLevel; // Lo leo de memoria global
-				return;
-			}
-			else // HIJOS
-			{
-				int nValid  = _cuda_searchChildrenValidAndHit2(octree[currentLevel+1], sizes[currentLevel+1], origin, ray, stackIndex[stackActual], children, tnears, tfars, nLevels, currentLevel+1, minBox);
-				if (nValid == 0)
-				{
-					volatile index_node_t idhijo=stackIndex[stackActual];
-					volatile int levhijo = currentLevel;
-					stackActual--;
-					if (numbro[currentLevel] == 0)
-					{
-						printf("CACA2\n");
-					}
-					numbro[currentLevel]--;
-					while(numbro[currentLevel] == 0)
-					{
-						if (currentLevel==0)
-						{
-							indexNode->id = 0;
-							*GstackActual = stackActual; // Lo leo de memoria global
-							*GcurrentLevel = currentLevel; // Lo leo de memoria global
-							return;
-							//end = true;
-						}
-						currentLevel--;
-						numbro[currentLevel]--;
-						stackActual--;
-					}
-					if (stackActual < 0)
-					{
-						indexNode->id = 0;
-						*GstackActual = stackActual; // Lo leo de memoria global
-						*GcurrentLevel = currentLevel; // Lo leo de memoria global
-						return;
-						//end = true;
-					}
-					minBox = _cuda_updateCoordinates(nLevels, levhijo, idhijo, currentLevel, stackIndex[stackActual], minBox);
-				}
-				else
-				{
-					// Sort the list mayor to minor
-					int n = nValid;
-					while(n != 0)
-					{
-						int newn = 0;
-						#pragma unroll
-						for(int id=1; id<nValid; id++)
-						{
-							if (tnears[id-1] > tnears[id])
-							{
-								index_node_t auxID = children[id];
-								children[id] = children[id-1];
-								children[id-1] = auxID;
-
-								float aux = tnears[id];
-								tnears[id] = tnears[id-1];
-								tnears[id-1] = aux;
-
-								aux = tfars[id];
-								tfars[id] = tfars[id-1];
-								tfars[id-1] = aux;
-
-								newn=id;
-							}
-							else if (tnears[id-1] == tnears[id] && tfars[id-1] > tfars[id])
-							{
-								index_node_t auxID = children[id];
-								children[id] = children[id-1];
-								children[id-1] = auxID;
-
-								float aux = tnears[id];
-								tnears[id] = tnears[id-1];
-								tnears[id-1] = aux;
-
-								aux = tfars[id];
-								tfars[id] = tfars[id-1];
-								tfars[id-1] = aux;
-
-								newn=id;
-							}
-						}
-						n = newn;
-					}
-					// Actualizado la estado
-					minBox = _cuda_updateCoordinates(nLevels, currentLevel, stackIndex[stackActual], currentLevel+1, children[0], minBox);
-					numbro[currentLevel+1]=nValid;
-					for(int i=nValid-1; i>=0; i--)
-					{
-						stackActual++;
-						stackIndex[stackActual] = children[i];
-					}
-					currentLevel++;
-				}
-			}
-		}
-	}
-}
-
-__global__ void cuda_getFirtsVoxel(index_node_t ** octree, int * sizes, int nLevels, float3 origin, float3 * rays, int finalLevel, visibleCube_t * indexNode, int numElements, index_node_t * GstackIndex, int * GstackActual, int * GcurrentLevel, int * Gnumbro)
-{
-	int i = blockIdx.y * blockDim.x * gridDim.y + blockIdx.x * blockDim.x +threadIdx.x;
-
-	if (i < numElements)
-	{
-		float tnear, tfar;
-		if (!_cuda_checkRange(octree[0],1,0,1) || !_cuda_RayAABB(1, origin, rays[i],  &tnear, &tfar, nLevels))
-		{
-			indexNode[i].id = 0;
-			return;
-		}
-		else
-			_cuda_getFirtsVoxel(octree, sizes, nLevels, origin, rays[i], finalLevel, &indexNode[i], &GstackIndex[i*nLevels*HPN], &GstackActual[i], &GcurrentLevel[i], &Gnumbro[i*nLevels]);
-	}
-
-	return;
-}
-#else
 __device__ void _cuda_getFirtsVoxel(index_node_t ** octree, int * sizes, int nLevels, float3 origin, float3 ray, int finalLevel, visibleCube_t * indexNode, int * p_stackActual, index_node_t * p_stackIndex, int * p_stackLevel)
 {
 
@@ -909,7 +735,6 @@ __global__ void cuda_getFirtsVoxel(index_node_t ** octree, int * sizes, int nLev
 
 	return;
 }
-#endif
 
 __global__ void insertOctreePointers(index_node_t ** octreeGPU, int * sizes, index_node_t * memoryGPU)
 {

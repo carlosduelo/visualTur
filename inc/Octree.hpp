@@ -22,16 +22,9 @@ class Octree
 		index_node_t * 	memoryGPU;
 		int	*	sizes;
 		// Octree State
-		#if _OG_
-		index_node_t *	GstackIndex; // cojo el puntero que apunta a memoria global
-		int 	*	GstackActual; // Lo leo de memoria global
-		int 	*	GcurrentLevel; // Lo leo de memoria global
-		int	*	Gnumbro; // cojo el puntero que apunta a memoria global
-		#else
 		int 	*	GstackActual;
 		index_node_t * 	GstackIndex;
 		int	*	GstackLevel;
-		#endif
 	public:
 		/* Lee el Octree de un fichero */
 		Octree(const char * file_name, Camera * p_camera, int p_maxLevel);
