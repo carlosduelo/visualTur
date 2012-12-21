@@ -136,11 +136,11 @@ inline __device__ float3 getNormal(float3 pos, float * data, int3 minBox, int3 m
 			        (getElementInterpolate(make_float3(pos.x,pos.y,pos.z-1.0f),data,minBox,maxBox) - getElementInterpolate(make_float3(pos.x,pos.y,pos.z+1.0f),data,minBox,maxBox))        /2.0f));
 }			
 
-__global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3 * rays, float iso, visibleCube_t * cube, int3 dimCube, int3 cubeInc, int levelO, int levelC, int nLevel, float * screen)
+__global__ void cuda_rayCaster(int numRays, float3 ligth, float3 origin, float * rays, float iso, visibleCube_t * cube, int3 dimCube, int3 cubeInc, int levelO, int levelC, int nLevel, float * screen)
 {
 	unsigned int tid = blockIdx.y * blockDim.x * gridDim.y + blockIdx.x * blockDim.x + threadIdx.x;
 
-	if (tid < (W*H))
+	if (tid < numRays)
 	{
 	
 		if (cube[tid].state == NOCUBE)
@@ -160,8 +160,9 @@ __global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3
 			int3 minBox = getMinBoxIndex2(cube[tid].id, levelO, nLevel);
 			int dim = powf(2,nLevel-levelO);
 			int3 maxBox = minBox + make_int3(dim,dim,dim);
+			float3 ray = make_float3(rays[tid], rays[tid+numRays], rays[tid+2*numRays]);
 			
-			if  (_cuda_RayAABB(origin, rays[tid],  &tnear, &tfar, minBox, maxBox))
+			if  (_cuda_RayAABB(origin, ray,  &tnear, &tfar, minBox, maxBox))
 			{
 				bool hit = false;
 				float3 Xnear;
@@ -171,14 +172,14 @@ __global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3
 				// To ray caster is needed bigger cube, so add cube inc
 				minBox = getMinBoxIndex2(cube[tid].cubeID, levelC, nLevel) - cubeInc;
 				maxBox = dimCube + 2*cubeInc;
-				Xnear = origin + tnear * rays[tid];
+				Xnear = origin + tnear * ray;
 				Xfar  = Xnear;
 				Xnew  = Xnear;
 				bool 				primera 	= true;
 				float 				ant		= 0.0;
 				float				sig		= 0.0;
 				int steps = 0;
-				float3 vStep = 0.5* rays[tid];
+				float3 vStep = 0.5* ray;
 				int  maxStep = ceil((tfar-tnear)/0.5);
 
 	/* CASOS A ESTUDIAR
@@ -264,97 +265,6 @@ __global__ void cuda_rayCaster(int W, int H, float3 ligth, float3 origin, float3
 	}
 }
 
-__global__ void cuda_rayCasterCube(int W, int H, float3 ligth, float3 origin, float3 * rays, float iso, float * cube, int3 p_minBox, int3 dimCube, int3 cubeInc, float * screen)
-{
-	unsigned int tid = blockIdx.y * blockDim.x * gridDim.y + blockIdx.x * blockDim.x + threadIdx.x;
-
-	if (tid < (W*H))
-	{
-		float tnear;
-		float tfar;
-		// To do test intersection real cube position
-		int3 minBox = p_minBox;
-		int3 maxBox = minBox + dimCube;
-		bool hit = false;
-		float3 Xnear;
-		float3 Xfar;
-		float3 Xnew;
-		
-		if  (_cuda_RayAABB(origin, rays[tid],  &tnear, &tfar, minBox, maxBox))
-		{
-			// To ray caster is needed bigger cube, so add cube inc
-			minBox -= cubeInc;
-			maxBox = dimCube + 2*cubeInc;
-			Xnear = origin + tnear * rays[tid];
-			Xfar  = Xnear;
-			Xnew  = Xnear;
-			//float * cubeD = cube[tid].data;
-			bool 				primera 	= true;
-			float 				ant		= 0.0;
-			float				sig		= 0.0;
-			float steps = 0;
-			float3 vStep = 0.5 * rays[tid];
-			float maxStep = (tfar-tnear)/0.5;
-			
-
-			while(steps <= maxStep)
-			{
-				if (primera)
-				{
-					primera = false;
-					ant = getElementInterpolate(Xnear, cube, minBox, maxBox);
-					Xfar = Xnear;
-				}
-				else
-				{
-					sig = getElementInterpolate(Xnear, cube, minBox, maxBox);
-					if (( ((iso-ant)<0.0) && ((iso-sig)<0.0)) || ( ((iso-ant)>0.0) && ((iso-sig)>0.0)))
-					{
-						ant = sig;
-						Xfar=Xnear;
-					}
-					else
-					{
-						float a = (iso-ant)/(sig-ant);
-						Xnew = Xfar*(1.0f-a)+ Xnear*a;
-						hit = true;
-						steps = maxStep;
-					}
-					
-				}
-
-				Xnear += vStep;
-				steps++;
-			}
-		}
-
-		if (hit)
-		{
-			float3 n = getNormal(Xnew, cube, minBox,  maxBox);
-			float3 l = Xnew - ligth;
-			l = normalize(l);
-			float3 v = origin - Xnew;
-			v = normalize(v);	
-			//float nl = fabs(n.x*l.x + n.y*l.y + n.z*l.z);
-			float dif = fabsf(dot(n,l));//fmax(dot(n,l),0.0f);
-			float3 r = -l + 2*(dot(n,l))*n;
-			float spec = powf(fabsf(dot(r,v)),16);
-
-			float a = Xnew.y/dimCube.y;
-			screen[tid*4]   =(1-a)*dif;// + 1.0f*spec;
-			screen[tid*4+1] =(a)*dif;// + 1.0f*spec;
-			screen[tid*4+2] =0.0f*dif;// + 1.0f*spec;
-			screen[tid*4+3] = 1.0f;
-		}
-		else
-		{
-			screen[tid*4] = 1.0f; 
-			screen[tid*4+1] = 1.0f; 
-			screen[tid*4+2] = 1.0f; 
-			screen[tid*4+3] = 1.0f; 
-		}
-	}
-}
 
 /*
 ******************************************************************************************************
@@ -378,17 +288,7 @@ void rayCaster::render(Camera * camera, int levelO, int levelC, int nLevel, visi
 	dim3 blocks = getBlocks(camera->get_numRays());
 	std::cerr<<"Launching kernek blocks ("<<blocks.x<<","<<blocks.y<<","<<blocks.z<<") threads ("<<threads.x<<","<<threads.y<<","<<threads.z<<") error: "<< cudaGetErrorString(cudaGetLastError())<<std::endl;
 
-	cuda_rayCaster<<<blocks, threads>>>(camera->get_W(), camera->get_H(), lightPosition, camera->get_position(), camera->get_rayDirections(), iso, cube, cubeDim, cubeInc, levelO, levelC, nLevel, buffer);
-	std::cerr<<"Synchronizing rayCaster: " << cudaGetErrorString(cudaDeviceSynchronize()) << std::endl;
-	return;
-}
-void rayCaster::renderCube(Camera * camera, float * cube, int3 minBox, int3 cubeDim, int3 cubeInc, float * buffer)
-{
-	dim3 threads = getThreads(camera->get_numRays());
-	dim3 blocks = getBlocks(camera->get_numRays());
-	std::cerr<<"Launching kernek blocks ("<<blocks.x<<","<<blocks.y<<","<<blocks.z<<") threads ("<<threads.x<<","<<threads.y<<","<<threads.z<<") error: "<< cudaGetErrorString(cudaGetLastError())<<std::endl;
-
-	cuda_rayCasterCube<<<blocks, threads>>>(camera->get_W(), camera->get_H(), lightPosition, camera->get_position(), camera->get_rayDirections(), iso, cube, minBox, cubeDim, cubeInc, buffer);
+	cuda_rayCaster<<<blocks, threads>>>(camera->get_numRays(), lightPosition, camera->get_position(), camera->get_rayDirections(), iso, cube, cubeDim, cubeInc, levelO, levelC, nLevel, buffer);
 	std::cerr<<"Synchronizing rayCaster: " << cudaGetErrorString(cudaDeviceSynchronize()) << std::endl;
 	return;
 }

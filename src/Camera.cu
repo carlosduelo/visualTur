@@ -9,11 +9,19 @@
 #include <iostream>
 #include <fstream>
 
-Camera::Camera(int nRP, int p_H, int p_W, float p_d, float p_fov_h, float p_fov_w) //inits the values (Position: (0|0|0) Target: (0|0|-1) )
+Camera::Camera(int sRay, int eRay, int nRP, int p_H, int p_W, float p_d, float p_fov_h, float p_fov_w) //inits the values (Position: (0|0|0) Target: (0|0|-1) )
 {
+	// Init screen
 	screen		= new Screen(p_H, p_W, p_d, p_fov_h, p_fov_w);
+
+	// Antialising, supersampling, number rays per pixel nRP*nRP, matrix of rays
 	numRayPixel	= nRP;
 
+	// Range of rays
+	startRay 	= sRay;
+	endRay		= eRay; 
+
+	
 	look 	= make_float3(0.0, 0.0, -1.0);
 	up 	= make_float3(0.0, 1.0, 0.0);
 	position= make_float3(0.0, 0.0, 0.0);
@@ -22,8 +30,8 @@ Camera::Camera(int nRP, int p_H, int p_W, float p_d, float p_fov_h, float p_fov_
 	RotatedY	= 0.0;
 	RotatedZ	= 0.0;	
 
-	numRays	= screen->get_H()*screen->get_W()*numRayPixel*numRayPixel;
-	std::cerr<<"Allocating memory camera directions buffer: "<<numRays*sizeof(float3)/1024/1024 << " MB: "<< cudaGetErrorString(cudaMalloc(&rayDirections, numRays*sizeof(float3))) << std::endl;
+	numRays	= endRay - startRay;
+	std::cerr<<"Allocating memory camera directions buffer: "<<3*numRays*sizeof(float)/1024/1024 << " MB: "<< cudaGetErrorString(cudaMalloc(&rayDirections, 3*numRays*sizeof(float))) << std::endl;
 
 	UpdateRays();
 }
@@ -34,16 +42,14 @@ Camera::~Camera()
 	delete screen;
 }
 
-
-
-__global__ void cuda_updateRays(float3 * rays, int numRayPixel, float3 up, float3 right, float3 look, int H, int W, float h, float w, float distance, float fov_H, float fov_W, float3 position)
+__global__ void cuda_updateRays(float * rays, int numRays, int sR, float3 up, float3 right, float3 look, int H, int W, float h, float w, float distance)
 {
-	int id = blockIdx.y * blockDim.x * gridDim.y + blockIdx.x * blockDim.x +threadIdx.x;
+	int id = blockIdx.y * blockDim.x * gridDim.y + blockIdx.x * blockDim.x + threadIdx.x;
 
-	if (id < (W*H))
+	if (id < numRays)
 	{
-		int i  = id / W;
-		int j  = id % W;
+		int i  = (id+sR) / W;
+		int j  = (id+sR) % W;
 
 		float ih  = h/H;
 		float iw  = w/W;
@@ -51,17 +57,48 @@ __global__ void cuda_updateRays(float3 * rays, int numRayPixel, float3 up, float
 		float3 A = (look * distance);
 		A += up * ((h/2.0f) - (ih*(i + 0.5f)));
 		A += right * (-(w/2.0f) + (iw*(j + 0.5f)));
+		A = normalize(A);
 
-		rays[id] = normalize(A);
+		rays[id] 		= A.x;
+		rays[id+numRays] 	= A.y;
+		rays[id+2*numRays] 	= A.z;
 	}
 }
 
+
+// NEED TO COMPLETE CODE, THINK HOW CARRY OUT THE ANTIALISING
+__global__ void cuda_updateRaysAntiAliassing(float * rays, int numRays, int sR, int numRP, float3 up, float3 right, float3 look, int H, int W, float h, float w, float distance)
+{
+	int id = blockIdx.y * blockDim.x * gridDim.y + blockIdx.x * blockDim.x + threadIdx.x;
+
+	if (id < numRays)
+	{
+		int i  = ((id+sR)/(numRP*numRP)) / W;
+		int j  = ((id+sR)/(numRP*numRP)) % W;
+		int ra = (id+sR) % (numRP*numRP);
+		float ih  = h/H;
+		float iw  = w/W;
+
+		float3 A = (look * distance);
+		A += up * ((h/2.0f) - (ih*(i + 0.5f)));
+		A += right * (-(w/2.0f) + (iw*(j + 0.5f)));
+		A = normalize(A);
+
+		rays[id] 		= A.x;
+		rays[id+numRays] 	= A.y;
+		rays[id+2*numRays] 	= A.z;
+	}
+}
 void Camera::UpdateRays()
 {
 	dim3 threads = getThreads(numRays);
 	dim3 blocks = getBlocks(numRays);
 	std::cerr<<"Launching kernek ray generation blocks ("<<blocks.x<<","<<blocks.y<<","<<blocks.z<<") threads ("<<threads.x<<","<<threads.y<<","<<threads.z<<") error: "<< cudaGetErrorString(cudaGetLastError())<<std::endl;
-	cuda_updateRays<<<blocks, threads>>>(rayDirections, numRayPixel, up, right, look, screen->get_H(), screen->get_W(), screen->get_h(), screen->get_w(), screen->get_Distance(), screen->get_fovH(), screen->get_fovW(), position);
+	if (numRayPixel == 1)
+		cuda_updateRays<<<blocks, threads>>>(rayDirections, numRays, startRay, up, right, look, screen->get_H(), screen->get_W(), screen->get_h(), screen->get_w(), screen->get_Distance());
+	else
+		cuda_updateRaysAntiAliassing<<<blocks, threads>>>(rayDirections, numRays, startRay, numRayPixel, up, right, look, screen->get_H(), screen->get_W(), screen->get_h(), screen->get_w(), screen->get_Distance());
+
 	std::cerr<<"Synchronizing calculating rays: " << cudaGetErrorString(cudaDeviceSynchronize()) << std::endl;
 }
 
@@ -147,7 +184,7 @@ float		Camera::get_fovH(){return screen->get_fovH();}
 float		Camera::get_fovW(){return screen->get_fovW();}
 int		Camera::get_numRayPixel(){return numRayPixel;}
 int		Camera::get_numRays(){return numRays;}
-float3 *	Camera::get_rayDirections(){return rayDirections;}
+float *		Camera::get_rayDirections(){return rayDirections;}
 float3		Camera::get_look(){return look;}
 float3		Camera::get_up(){return up;}
 float3		Camera::get_right(){return right;}
@@ -155,73 +192,3 @@ float3		Camera::get_position(){return position;}
 float           Camera::get_RotatedX(){return RotatedX;}
 float           Camera::get_RotatedY(){return RotatedY;}
 float           Camera::get_RotatedZ(){return RotatedZ;}
-void		Camera::set_H(int pH)
-{
-	screen->set_H(pH);
-
-	numRays = screen->get_H()*screen->get_W()*numRayPixel*numRayPixel;
-
-	cudaFree(rayDirections);
-	std::cerr<<"Allocating memory camera directions buffer: "<<numRays*sizeof(float3)/1024/1024 << " MB: "<< cudaGetErrorString(cudaMalloc(&rayDirections, numRays*sizeof(float3))) << std::endl;
-
-        UpdateRays();
-}
-
-void		Camera::set_W(int pW)
-{
-	screen->set_W(pW);
-
-	numRays = screen->get_H()*screen->get_W()*numRayPixel*numRayPixel;
-
-	cudaFree(rayDirections);
-	std::cerr<<"Allocating memory camera directions buffer: "<<numRays*sizeof(float3)/1024/1024 << " MB: "<< cudaGetErrorString(cudaMalloc(&rayDirections, numRays*sizeof(float3))) << std::endl;
-
-        UpdateRays();
-}
-
-void		Camera::set_Distance(float pd)
-{
-	screen->set_Distance(pd);
-
-	numRays = screen->get_H()*screen->get_W()*numRayPixel*numRayPixel;
-
-	cudaFree(rayDirections);
-	std::cerr<<"Allocating memory camera directions buffer: "<<numRays*sizeof(float3)/1024/1024 << " MB: "<< cudaGetErrorString(cudaMalloc(&rayDirections, numRays*sizeof(float3))) << std::endl;
-
-        UpdateRays();
-}
-
-void		Camera::set_fovH(float pfh)
-{
-	screen->set_fovH(pfh);
-
-	numRays = screen->get_H()*screen->get_W()*numRayPixel*numRayPixel;
-
-	cudaFree(rayDirections);
-	std::cerr<<"Allocating memory camera directions buffer: "<<numRays*sizeof(float3)/1024/1024 << " MB: "<< cudaGetErrorString(cudaMalloc(&rayDirections, numRays*sizeof(float3))) << std::endl;
-
-        UpdateRays();
-}
-
-void		Camera::set_fovW(float pfw)
-{
-	screen->set_fovW(pfw);
-
-	numRays = screen->get_H()*screen->get_W()*numRayPixel*numRayPixel;
-
-	cudaFree(rayDirections);
-	std::cerr<<"Allocating memory camera directions buffer: "<<numRays*sizeof(float3)/1024/1024 << " MB: "<< cudaGetErrorString(cudaMalloc(&rayDirections, numRays*sizeof(float3))) << std::endl;
-
-        UpdateRays();
-}
-
-void 	Camera::set_RayPerPixel(int rpp)
-{
-	numRayPixel = rpp;
-	numRays = screen->get_H()*screen->get_W()*numRayPixel*numRayPixel;
-
-	cudaFree(rayDirections);
-	std::cerr<<"Allocating memory camera directions buffer: "<<numRays*sizeof(float3)/1024/1024 << " MB: "<< cudaGetErrorString(cudaMalloc(&rayDirections, numRays*sizeof(float3))) << std::endl;
-
-        UpdateRays();
-}

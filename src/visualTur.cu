@@ -10,15 +10,15 @@
 visualTur::visualTur(visualTurParams_t initParams)
 {
 	// Creating Camera
-	camera = new Camera(initParams.numRayPx, initParams.H, initParams.W, initParams.distance, initParams.fov_H, initParams.fov_W);
+	camera = new Camera(initParams.H*initParams.W/2, initParams.H*initParams.W, initParams.numRayPx, initParams.H, initParams.W, initParams.distance, initParams.fov_H, initParams.fov_W);
 
 	// Creating visible cubes array
 	visibleCubesCPU = new visibleCube_t[camera->get_numRays()];
 	std::cerr<<"Allocating memory visibleCubesGPU "<<camera->get_numRays()*sizeof(visibleCube_t)/1024/1024 <<" MB : "<< cudaGetErrorString(cudaMalloc((void**)&visibleCubesGPU, camera->get_numRays()*sizeof(visibleCube_t)))<<std::endl;
 	resetVisibleCubes();
 
-	octreeLevel = initParams.octreeLevel;
 	// Create octree
+	octreeLevel = initParams.octreeLevel;
 	octree = new Octree(initParams.octreeFile, camera, octreeLevel);
 	octree->resetState();
 
@@ -78,34 +78,6 @@ void visualTur::resetVisibleCubes()
 		#endif
 	#endif
 
-}
-
-void visualTur::changeScreen(int pW, int pH, float pfovW, float pfovH, float pDistance)
-{
-	camera->set_W(pW);
-	camera->set_H(pH);
-	camera->set_fovW(pfovW);
-	camera->set_fovH(pfovH);
-	camera->set_Distance(pDistance);
-
-	delete[]	visibleCubesCPU;
-	cudaFree(visibleCubesGPU);
-	visibleCubesCPU = new visibleCube_t[camera->get_numRays()];
-	std::cerr<<"Allocating memory visibleCubesGPU "<<camera->get_numRays()*sizeof(visibleCube_t)/1024/1024 <<" MB : "<< cudaGetErrorString(cudaMalloc((void**)&visibleCubesGPU, camera->get_numRays()*sizeof(visibleCube_t)))<<std::endl;
-	resetVisibleCubes();
-	octree->resetState();
-}
-
-void visualTur::changeNumRays(int pnR)
-{
-	camera->set_RayPerPixel(pnR);
-
-	delete[]	visibleCubesCPU;
-	cudaFree(visibleCubesGPU);
-	visibleCubesCPU = new visibleCube_t[camera->get_numRays()];
-	std::cerr<<"Allocating memory visibleCubesGPU "<<camera->get_numRays()*sizeof(visibleCube_t)/1024/1024 <<" MB : "<< cudaGetErrorString(cudaMalloc((void**)&visibleCubesGPU, camera->get_numRays()*sizeof(visibleCube_t)))<<std::endl;
-	resetVisibleCubes();
-	octree->resetState();
 }
 
 void visualTur::changeCacheParameters(int nE, int3 cDim, int cInc)

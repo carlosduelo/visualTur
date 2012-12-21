@@ -12,11 +12,14 @@
 class Camera
 {
 	private:
-		void UpdateRays();
 		Screen * screen;
 		int			numRayPixel;
+		int			startRay;
+		int			endRay;
 		int			numRays;
-		float3 	 *		rayDirections;
+		float 	 *		rayDirections;
+
+		// Camera
 		float3			look;
 		float3			up;
 		float3			right;
@@ -24,9 +27,12 @@ class Camera
 		float                  	RotatedX;
 		float                  	RotatedY;
 		float                  	RotatedZ;
+
+		// Private Methods
+		void UpdateRays();
 	public:
 
-		Camera(int nRP, int p_H, int p_W, float p_d, float p_fov_h, float p_fov_w); //inits the values (Position: (0|0|0) Target: (0|0|-1) )
+		Camera(int sRay, int eRay, int nRP, int p_H, int p_W, float p_d, float p_fov_h, float p_fov_w); //inits the values (Position: (0|0|0) Target: (0|0|-1) )
 
 		~Camera();
 
@@ -46,7 +52,7 @@ class Camera
 		float		get_fovW();
 		int		get_numRayPixel();
 		int		get_numRays();
-		float3 *	get_rayDirections();
+		float *		get_rayDirections();
 		float3		get_look();
 		float3		get_up();
 		float3		get_right();
@@ -54,12 +60,5 @@ class Camera
 		float           get_RotatedX();
 		float           get_RotatedY();
 		float           get_RotatedZ();
-		void		set_H(int pH);
-		void		set_W(int pW);
-		void		set_Distance(float pd);
-		void		set_fovH(float pfh);
-		void		set_fovW(float pfw);
-		void 		set_RayPerPixel(int rpp);
-
 };
 #endif/*_CAMERA_H_*/

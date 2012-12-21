@@ -891,20 +891,22 @@ __device__ void _cuda_getFirtsVoxel(index_node_t ** octree, int * sizes, int nLe
 	}
 }
 
-__global__ void cuda_getFirtsVoxel(index_node_t ** octree, int * sizes, int nLevels, float3 origin, float3 * rays, int finalLevel, visibleCube_t * indexNode, int numElements, int * stackActual, index_node_t * stackIndex, int * stackLevel)
+__global__ void cuda_getFirtsVoxel(index_node_t ** octree, int * sizes, int nLevels, float3 origin, float * rays, int finalLevel, visibleCube_t * indexNode, int numElements, int * stackActual, index_node_t * stackIndex, int * stackLevel)
 {
 	int i = blockIdx.y * blockDim.x * gridDim.y + blockIdx.x * blockDim.x +threadIdx.x;
 
 	if (i < numElements)
 	{
 		float tnear, tfar;
-		if (!_cuda_checkRange(octree[0],1,0,1) || !_cuda_RayAABB(1, origin, rays[i],  &tnear, &tfar, nLevels))
+		float3 ray = make_float3(rays[i], rays[i+numElements], rays[i+2*numElements]);
+
+		if (!_cuda_checkRange(octree[0],1,0,1) || !_cuda_RayAABB(1, origin, ray,  &tnear, &tfar, nLevels))
 		{
 			indexNode[i].id = 0;
 			return;
 		}
 		else
-			_cuda_getFirtsVoxel(octree, sizes, nLevels, origin, rays[i], finalLevel, &indexNode[i], &stackActual[i], &stackIndex[i*STACK_DIM], &stackLevel[i*STACK_DIM]);
+			_cuda_getFirtsVoxel(octree, sizes, nLevels, origin, ray, finalLevel, &indexNode[i], &stackActual[i], &stackIndex[i*STACK_DIM], &stackLevel[i*STACK_DIM]);
 	}
 
 	return;

@@ -1,10 +1,10 @@
 /*
- * visualTur 
+ * visualTur_thread 
  *
  */
 
-#ifndef _VISUALTUR_H_
-#define _VISUALTUR_H_
+#ifndef _VISUALTUR_THREAD_H_
+#define _VISUALTUR_THREAD_H_
 #include "Octree.hpp"
 #include "lruCache.hpp"
 #include "rayCaster.hpp"
@@ -30,11 +30,16 @@ typedef struct
 	// octree settings
 	char *  octreeFile;
 	int 	octreeLevel;
-} visualTurParams_t;
+} visualTurParams_thread_t;
 
-class visualTur
+class visualTur_thread
 {
 	private:
+		// Multithreading stuff
+		pthread_t 	id_thread;
+		pthread_attr_t 	attr_thread;
+		cudaStream_t 	stream;
+
 		Camera * 	camera;
 
 		visibleCube_t *	visibleCubesCPU;
@@ -50,15 +55,13 @@ class visualTur
 		rayCaster *	raycaster;
 
 		void resetVisibleCubes();
-
-		double timingO;
-		double timingC;
-		double timingR;
-
 	public:
-		visualTur(visualTurParams_t initParams);
+		visualTur(visualTurParams_thread_t initParams);
 
 		~visualTur();
+
+		// Multithreading methods
+		pthread_t getID_thread();
 
 		// Change parameters
 		void changeCacheParameters(int nE, int3 cDim, int cInc);
