@@ -25,7 +25,7 @@ obj/rayCaster.o: src/rayCaster.cu inc/rayCaster.hpp
 obj/visualTur.o: src/visualTur.cu inc/visualTur.hpp
 	$(NVCC) -c  $(NFLAGS) $(INCLUDE) src/visualTur.cu -o obj/visualTur.o
 
-testPrograms: bin/testVisualTur bin/testFileManager bin/testRayCaster
+testPrograms: bin/testVisualTur bin/testFileManager bin/testRayCaster bin/drawPixel
 
 bin/testFileManager: Objects src/testFileManager.cu
 	$(NVCC) $(NFLAGS) $(INCLUDE) obj/FileManager.o src/testFileManager.cu  -o bin/testFileManager $(LIBRARY)
@@ -35,6 +35,9 @@ bin/testVisualTur: Objects src/testVisualTur.cu
 
 bin/testRayCaster: Objects src/testRayCaster.cu
 	$(NVCC) $(NFLAGS) $(INCLUDE) obj/Screen.o obj/Camera.o obj/FileManager.o obj/rayCaster.o src/testRayCaster.cu  -o bin/testRayCaster $(LIBRARY)
+
+bin/drawPixel: Objects src/drawPixel.cu
+	$(NVCC) $(NFLAGS) $(INCLUDE) obj/Screen.o obj/Camera.o obj/FileManager.o  obj/lruCache.o obj/Octree.o obj/rayCaster.o obj/visualTur.o src/drawPixel.cu  -o bin/drawPixel $(LIBRARY)
 	
 utils: bin/cutFile
 
