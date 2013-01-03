@@ -745,21 +745,6 @@ __global__ void insertOctreePointers(index_node_t ** octreeGPU, int * sizes, ind
 	octreeGPU[threadIdx.x] = &memoryGPU[offset];
 }
 
-#if _OG_
-__global__ void cuda_resetState(int nLevels, int numElements, index_node_t * GstackIndex, int * GstackActual, int * GcurrentLevel, int * Gnumbro)
-{
-	
-	int i = blockIdx.y * blockDim.x * gridDim.y + blockIdx.x * blockDim.x +threadIdx.x;
-
-	if (i < numElements)
-	{
-		GstackIndex[i*HPN*nLevels] = 1;
-		Gnumbro[i*nLevels] = 1; 
-		GstackActual[i] = 0;
-		GcurrentLevel[i] = 0;
-	}
-}
-#else
 __global__ void cuda_resetState(int numElements, int * stackActual, index_node_t * stackIndex, int * stackLevel)
 {
 	int i = blockIdx.y * blockDim.x * gridDim.y + blockIdx.x * blockDim.x +threadIdx.x;
@@ -771,7 +756,6 @@ __global__ void cuda_resetState(int numElements, int * stackActual, index_node_t
 		stackLevel[i*STACK_DIM] = 0;
 	}
 }
-#endif
 
 /*
 ******************************************************************************************************
@@ -868,17 +852,9 @@ Octree::Octree(const char * file_name, Camera * p_camera, int p_maxLevel)
         delete[]        octreeCPU;
 
 	// Create octree State
-	#if _OG_
-		std::cerr<<"Allocating stackIndex "<<HPN*nLevels*camera->get_numRays()*sizeof(index_node_t)/1024.0f/1024.0f<<" MB: "<< cudaGetErrorString(cudaMalloc(&GstackIndex, HPN*nLevels*camera->get_numRays()*sizeof(index_node_t))) << std::endl;
-		std::cerr<<"Allocating stackActual "<<camera->get_numRays()*sizeof(int)/1024.0f/1024.0f<<" MB: "<< cudaGetErrorString(cudaMalloc(&GstackActual, camera->get_numRays()*sizeof(int))) << std::endl;
-		std::cerr<<"Allocating stackcurrentLevel "<<camera->get_numRays()*sizeof(int)/1024.0f/1024.0f<<" MB: "<< cudaGetErrorString(cudaMalloc(&GcurrentLevel, camera->get_numRays()*sizeof(int))) << std::endl;
-		std::cerr<<"Allocating numbro "<<nLevels*camera->get_numRays()*sizeof(int)/1024.0f/1024.0f<<" MB: "<< cudaGetErrorString(cudaMalloc(&Gnumbro,nLevels*camera->get_numRays()*sizeof(int))) << std::endl;
-		resetState();
-	#else
 	std::cerr<<"Allocating memory octree state stackIndex "<<camera->get_numRays()*STACK_DIM*sizeof(index_node_t)/1024.0f/1024.0f<<" MB: "<< cudaGetErrorString(cudaMalloc(&GstackIndex, camera->get_numRays()*STACK_DIM*sizeof(index_node_t))) << std::endl;
 	std::cerr<<"Allocating memory octree state stackActual "<<camera->get_numRays()*sizeof(int)/1024.0f/1024.0f<<" MB: "<< cudaGetErrorString(cudaMalloc(&GstackActual, camera->get_numRays()*sizeof(int))) << std::endl;
 	std::cerr<<"Allocating memory octree state stackLevel "<<camera->get_numRays()*STACK_DIM*sizeof(int)/1024.0f/1024.0f<<" MB: "<< cudaGetErrorString(cudaMalloc(&GstackLevel, camera->get_numRays()*STACK_DIM*sizeof(int))) << std::endl;
-	#endif
 
 	resetState();
 
@@ -912,11 +888,8 @@ bool Octree::getBoxIntersected(int finalLevel, visibleCube_t * visibleGPU, visib
 
 	//std::cerr<<"Set HEAP size: "<< cudaGetErrorString(cudaThreadSetLimit(cudaLimitMallocHeapSize , numElements*1216)) << std::endl;
 
-	#if _OG_
-	cuda_getFirtsVoxel<<<blocks,threads>>>(octree, sizes, nLevels, camera->get_position(), camera->get_rayDirections(), finalLevel, visibleGPU, numElements,GstackIndex, GstackActual, GcurrentLevel, Gnumbro);
-	#else
 	cuda_getFirtsVoxel<<<blocks,threads>>>(octree, sizes, nLevels, camera->get_position(), camera->get_rayDirections(), finalLevel, visibleGPU, numElements, GstackActual, GstackIndex, GstackLevel);
-	#endif
+
 	std::cerr<<"Launching kernek blocks ("<<blocks.x<<","<<blocks.y<<","<<blocks.z<<") threads ("<<threads.x<<","<<threads.y<<","<<threads.z<<") error: "<< cudaGetErrorString(cudaGetLastError())<<std::endl;
 
 	std::cerr<<"Coping to host visibleCubes: "<< cudaGetErrorString(cudaMemcpy((void*)visibleCPU, (const void*)visibleGPU, numElements*sizeof(visibleCube_t), cudaMemcpyDeviceToHost)) << std::endl;
@@ -927,19 +900,10 @@ bool Octree::getBoxIntersected(int finalLevel, visibleCube_t * visibleGPU, visib
 
 void Octree::resetState()
 {
-#if _OG_
-	int numElements = camera->get_numRays();
-	dim3 threads = getThreads(numElements);
-	dim3 blocks = getBlocks(numElements);
-
-	cuda_resetState<<<blocks, threads>>>(nLevels, numElements, GstackIndex, GstackActual, GcurrentLevel, Gnumbro); 
-	std::cerr<<"Launching kernek blocks ("<<blocks.x<<","<<blocks.y<<","<<blocks.z<<") threads ("<<threads.x<<","<<threads.y<<","<<threads.z<<") error: "<< cudaGetErrorString(cudaGetLastError())<<std::endl;
-#else
 	int numElements = camera->get_numRays();
 	dim3 threads = getThreads(numElements);
 	dim3 blocks = getBlocks(numElements);
 
 	cuda_resetState<<<blocks,threads>>>(numElements, GstackActual, GstackIndex, GstackLevel);
 	std::cerr<<"Launching kernek blocks ("<<blocks.x<<","<<blocks.y<<","<<blocks.z<<") threads ("<<threads.x<<","<<threads.y<<","<<threads.z<<") error: "<< cudaGetErrorString(cudaGetLastError())<<std::endl;
-#endif
 }
