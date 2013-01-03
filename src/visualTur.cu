@@ -10,7 +10,7 @@
 visualTur::visualTur(visualTurParams_t initParams)
 {
 	// Creating Camera
-	camera = new Camera(initParams.H*initParams.W/2, initParams.H*initParams.W, initParams.numRayPx, initParams.H, initParams.W, initParams.distance, initParams.fov_H, initParams.fov_W);
+	camera = new Camera(0, initParams.H*initParams.W, initParams.numRayPx, initParams.H, initParams.W, initParams.distance, initParams.fov_H, initParams.fov_W);
 
 	// Creating visible cubes array
 	visibleCubesCPU = new visibleCube_t[camera->get_numRays()];
