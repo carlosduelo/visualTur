@@ -12,6 +12,18 @@ visualTur * VisualTur;
 float * screenG;
 float * screenC;
 
+
+//FPS
+long long int 	frameCount = 0;
+int 		currentTime;
+int 		previousTime;
+float		fps;
+
+void drawFPS()
+{
+	std::cout<<"FPS: "<<fps<<std::endl;
+}
+
 void display()
 {
 
@@ -22,6 +34,8 @@ void display()
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glDrawPixels(W, H,GL_RGBA, GL_FLOAT, screenC);
+
+	drawFPS();
 
 	glutSwapBuffers();
 }
@@ -73,8 +87,44 @@ void KeyDown(unsigned char key, int x, int y)
 	display();
 }
 
+//-------------------------------------------------------------------------
+// Calculates the frames per second
+//-------------------------------------------------------------------------
+void calculateFPS()
+{
+    //  Increase frame count
+    frameCount++;
 
+    //  Get the number of milliseconds since glutInit called
+    //  (or first call to glutGet(GLUT ELAPSED TIME)).
+    currentTime = glutGet(GLUT_ELAPSED_TIME);
 
+    //  Calculate time passed
+    int timeInterval = currentTime - previousTime;
+
+    if(timeInterval > 1000)
+    {
+        //  calculate the number of frames per second
+        fps = frameCount / (timeInterval / 1000.0f);
+
+        //  Set time
+        previousTime = currentTime;
+
+        //  Reset frame count
+        frameCount = 0;
+    }
+}
+
+void idle (void)
+{
+    //  Animate the object
+
+    //  Calculate FPS
+    calculateFPS();
+
+    //  Call display function (draw the current frame)
+    glutPostRedisplay ();
+}
 
 int main(int argc, char** argv)
 {
@@ -103,8 +153,8 @@ int main(int argc, char** argv)
 	params.maxElementsCache_CPU = 5000;
 	params.dimCubeCache = make_int3(64,64,64);
 	params.cubeInc = 2;
-	params.levelCubes = 7;
-	params.octreeLevel =9;
+	params.levelCubes = 3;
+	params.octreeLevel =8;
 	params.hdf5File = argv[1];
 	params.dataset_name = argv[2];
 	params.octreeFile = argv[3];
@@ -130,7 +180,7 @@ int main(int argc, char** argv)
 	//glutMouseFunc(mouse_button);
 	//glutMotionFunc(mouse_motion);
 	glutKeyboardFunc(KeyDown);
-	//glutIdleFunc(idle);
+	glutIdleFunc(idle);
 
 	glEnable(GL_DEPTH_TEST);
 	glClearColor(0.0, 0.0, 0.0, 1.0);
