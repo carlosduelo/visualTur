@@ -5,7 +5,7 @@
 
 #ifndef _VISUALTUR_THREAD_H_
 #define _VISUALTUR_THREAD_H_
-#include "Octree.hpp"
+#include "Octree_thread.hpp"
 #include "lruCache.hpp"
 #include "rayCaster.hpp"
 
@@ -18,18 +18,22 @@ typedef struct
 	float 	fov_H;
 	float	fov_W;
 	int	numRayPx;
+	int	startRay;
+	int	endRay;
+
 	// Cube Cache settings
 	int	maxElementsCache;
 	int	maxElementsCache_CPU;
 	int3	dimCubeCache;
 	int	cubeInc;
 	int	levelCubes;
+
 	// hdf5 settings
 	char * hdf5File;
 	char * dataset_name;
-	// octree settings
-	char *  octreeFile;
-	int 	octreeLevel;
+
+	// Octree
+	int	octreeLevel;
 } visualTurParams_thread_t;
 
 class visualTur_thread
@@ -48,23 +52,19 @@ class visualTur_thread
 		lruCache *	cache;
 		int		cubeLevel;
 
-		Octree *	octree;
-		float 		iso;
+		Octree_thread *	octree;
 		int		octreeLevel;
 
 		rayCaster *	raycaster;
 
 		void resetVisibleCubes();
 	public:
-		visualTur(visualTurParams_thread_t initParams);
+		visualTur_thread(visualTurParams_thread_t initParams, Octree_device * p_octree_device);
 
-		~visualTur();
+		~visualTur_thread();
 
 		// Multithreading methods
 		pthread_t getID_thread();
-
-		// Change parameters
-		void changeCacheParameters(int nE, int3 cDim, int cInc);
 
 		// Move camera
 		void	camera_Move(float3 Direction);

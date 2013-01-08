@@ -75,7 +75,7 @@ __global__ void cuda_updateRaysAntiAliassing(float * rays, int numRays, int sR, 
 	{
 		int i  = ((id+sR)/(numRP*numRP)) / W;
 		int j  = ((id+sR)/(numRP*numRP)) % W;
-		int ra = (id+sR) % (numRP*numRP);
+		//int ra = (id+sR) % (numRP*numRP);
 		float ih  = h/H;
 		float iw  = w/W;
 

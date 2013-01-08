@@ -60,7 +60,6 @@ class visualTur
 
 		~visualTur();
 
-		// Change parameters
 		void changeCacheParameters(int nE, int3 cDim, int cInc);
 
 		// Move camera

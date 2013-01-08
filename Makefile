@@ -8,7 +8,7 @@ LIBRARY=-lm -lhdf5 -lGL -lglut -lGLU -lfreeimage
 
 all: Objects testPrograms utils
 
-Objects: obj/Screen.o obj/Camera.o obj/FileManager.o obj/lruCache.o obj/Octree.o obj/rayCaster.o obj/visualTur.o 
+Objects: obj/Screen.o obj/Camera.o obj/FileManager.o obj/lruCache.o obj/Octree.o obj/rayCaster.o obj/visualTur.o obj/Octree_thread.o obj/Octree_device.o obj/visualTur_thread.o 
 
 obj/Screen.o: src/Screen.cpp inc/Screen.hpp
 	$(NVCC) -c $(NFLAGS) $(INCLUDE) src/Screen.cpp -o obj/Screen.o
@@ -20,12 +20,18 @@ obj/lruCache.o: src/lruCache.cu inc/lruCache.hpp
 	$(NVCC) -c  $(NFLAGS) $(INCLUDE) src/lruCache.cu -o obj/lruCache.o
 obj/Octree.o: src/Octree.cu inc/Octree.hpp
 	$(NVCC) -c  $(NFLAGS) $(INCLUDE) src/Octree.cu -o obj/Octree.o
+obj/Octree_thread.o: src/Octree_thread.cu inc/Octree_thread.hpp
+	$(NVCC) -c  $(NFLAGS) $(INCLUDE) src/Octree_thread.cu -o obj/Octree_thread.o
+obj/Octree_device.o: src/Octree_device.cu inc/Octree_device.hpp
+	$(NVCC) -c  $(NFLAGS) $(INCLUDE) src/Octree_device.cu -o obj/Octree_device.o
 obj/rayCaster.o: src/rayCaster.cu inc/rayCaster.hpp
 	$(NVCC) -c  $(NFLAGS) $(INCLUDE) src/rayCaster.cu -o obj/rayCaster.o
 obj/visualTur.o: src/visualTur.cu inc/visualTur.hpp
 	$(NVCC) -c  $(NFLAGS) $(INCLUDE) src/visualTur.cu -o obj/visualTur.o
+obj/visualTur_thread.o: src/visualTur_thread.cu inc/visualTur_thread.hpp
+	$(NVCC) -c  $(NFLAGS) $(INCLUDE) src/visualTur_thread.cu -o obj/visualTur_thread.o
 
-testPrograms: bin/testVisualTur bin/testFileManager bin/testRayCaster
+testPrograms: bin/testVisualTur bin/testFileManager
 
 bin/testFileManager: Objects src/testFileManager.cu
 	$(NVCC) $(NFLAGS) $(INCLUDE) obj/FileManager.o src/testFileManager.cu  -o bin/testFileManager $(LIBRARY)
@@ -33,9 +39,6 @@ bin/testFileManager: Objects src/testFileManager.cu
 bin/testVisualTur: Objects src/testVisualTur.cu
 	$(NVCC) $(NFLAGS) $(INCLUDE) obj/Screen.o obj/Camera.o obj/FileManager.o  obj/lruCache.o obj/Octree.o obj/rayCaster.o obj/visualTur.o src/testVisualTur.cu  -o bin/testVisualTur $(LIBRARY)
 
-bin/testRayCaster: Objects src/testRayCaster.cu
-	$(NVCC) $(NFLAGS) $(INCLUDE) obj/Screen.o obj/Camera.o obj/FileManager.o obj/rayCaster.o src/testRayCaster.cu  -o bin/testRayCaster $(LIBRARY)
-	
 utils: bin/cutFile
 
 bin/cutFile: Objects src/cutFile.cu

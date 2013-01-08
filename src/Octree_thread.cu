@@ -1,4 +1,4 @@
-#include "Octree.hpp"
+#include "Octree_thread.hpp"
 #include "mortonCodeUtil.hpp"
 #include "cuda_help.hpp"
 #include <iostream>
@@ -738,15 +738,6 @@ __global__ void cuda_getFirtsVoxel(index_node_t ** octree, int * sizes, int nLev
 	return;
 }
 
-__global__ void insertOctreePointers(index_node_t ** octreeGPU, int * sizes, index_node_t * memoryGPU)
-{
-	int offset = 0;
-	for(int i=0;i<threadIdx.x; i++)
-		offset+=sizes[i];
-
-	octreeGPU[threadIdx.x] = &memoryGPU[offset];
-}
-
 __global__ void cuda_resetState(int numElements, int * stackActual, index_node_t * stackIndex, int * stackLevel)
 {
 	int i = blockIdx.y * blockDim.x * gridDim.y + blockIdx.x * blockDim.x +threadIdx.x;
@@ -765,122 +756,44 @@ __global__ void cuda_resetState(int numElements, int * stackActual, index_node_t
 ******************************************************************************************************
 */
 
-/* Lee el Octree de un fichero */
-Octree::Octree(const char * file_name, Camera * p_camera, int p_maxLevel)
+Octree_thread::Octree_thread(Octree_device * p_octree, Camera * p_camera, int p_maxLevel)
 {
-	camera = p_camera;
-	maxLevel = p_maxLevel;
+	camera 		= p_camera;
+	maxLevel 	= p_maxLevel;
 
-        /* Read octree from file */
-	std::ifstream file;
-
-        file.open(file_name, std::ifstream::binary);
-        int magicWord;
-
-        file.read((char*)&magicWord, sizeof(magicWord));
-        if (magicWord != 919278872)
-        {
-                std::cerr<<"Error, invalid file format"<<std::endl;
-                throw std::exception();
-        }
-
-        file.read((char*)&isosurface, sizeof(isosurface));
-        file.read((char*)&dimension, sizeof(dimension));
-        file.read((char*)&realDim.x, sizeof(realDim.x));
-        file.read((char*)&realDim.y, sizeof(realDim.y));
-        file.read((char*)&realDim.z, sizeof(realDim.z));
-        file.read((char*)&nLevels, sizeof(int));
-
-        std::cout<<"Octree de dimension "<<dimension<<"x"<<dimension<<"x"<<dimension<<" niveles "<<nLevels<<std::endl;
-
-        index_node_t ** octreeCPU	= new index_node_t*[nLevels+1];
-        int 	*	sizesCPU	= new int[nLevels+1];
-
-        for(int i=nLevels; i>=0; i--)
-        {
-                int numElem = 0;
-                file.read((char*)&numElem, sizeof(numElem));
-                //std::cout<<"Dimension del node en el nivel "<<i<<" es de "<<powf(2.0,*nLevels-i)<<std::endl;
-                //std::cout<<"Numero de elementos de nivel "<<i<<" "<<numElem<<std::endl;
-                sizesCPU[i] = numElem;
-                octreeCPU[i] = new index_node_t[numElem];
-                for(int j=0; j<numElem; j++)
-                {
-                        index_node_t node = 0;
-                        file.read((char*) &node, sizeof(index_node_t));
-                        octreeCPU[i][j]= node;
-                }
-        }
-
-        file.close();
-	/* end reading octree from file */
-
-	std::cerr<<"Copying octree to GPU"<<std::endl;
-
-	int total = 0;
-	for(int i=0; i<=maxLevel; i++)
-		total+=sizesCPU[i];
-
-	std::cerr<<"Allocating memory octree CUDA octree "<<(maxLevel+1)*sizeof(index_node_t*)/1024.0f/1024.0f<<" MB: "<< cudaGetErrorString(cudaMalloc(&octree, (maxLevel+1)*sizeof(index_node_t*))) << std::endl;
-	std::cerr<<"Allocating memory octree CUDA memory "<<total*sizeof(index_node_t)/1024.0f/1024.0f<<" MB: "<< cudaGetErrorString(cudaMalloc(&memoryGPU, total*sizeof(index_node_t))) << std::endl;
-	std::cerr<<"Allocating memory octree CUDA sizes "<<(maxLevel+1)*sizeof(int)/1024.0f/1024.0f<<" MB: "<< cudaGetErrorString(cudaMalloc(&sizes,   (maxLevel+1)*sizeof(int))) << std::endl;
-
-	/* Compiando sizes */
-	std::cerr<<"Coping to device: "<< cudaGetErrorString(cudaMemcpy((void*)sizes, (void*)sizesCPU, (maxLevel+1)*sizeof(int), cudaMemcpyHostToDevice)) << std::endl;
-	/* end sizes */
-
-	/* Copying octree */
-
-	int offset = 0;
-	for(int i=0; i<=maxLevel; i++)
-	{
-		std::cerr<<"Coping to device: "<< cudaGetErrorString(cudaMemcpy((void*)(memoryGPU+offset), (void*)octreeCPU[i], sizesCPU[i]*sizeof(index_node_t), cudaMemcpyHostToDevice)) << std::endl;
-		offset+=sizesCPU[i];
-	}	
-	
-	dim3 blocks(1);
-	dim3 threads(maxLevel+1);
-	
-	insertOctreePointers<<<blocks,threads>>>(octree, sizes, memoryGPU);
-	std::cerr<<"Launching kernek blocks ("<<blocks.x<<","<<blocks.y<<","<<blocks.z<<") threads ("<<threads.x<<","<<threads.y<<","<<threads.z<<") error: "<< cudaGetErrorString(cudaGetLastError())<<std::endl;
-	std::cerr<<"Synchronizing: " << cudaGetErrorString(cudaDeviceSynchronize()) << std::endl;
-	std::cerr<<"End copying octree to GPU"<<std::endl;
-
-	delete[] sizesCPU;
-        for(int i=0; i<=nLevels; i++)
-        {
-                delete[] octreeCPU[i];
-        }
-        delete[]        octreeCPU;
+	octree		= p_octree->getOctree();
+	sizes		= p_octree->getSizes();	
 
 	// Create octree State
 	std::cerr<<"Allocating memory octree state stackIndex "<<camera->get_numRays()*STACK_DIM*sizeof(index_node_t)/1024.0f/1024.0f<<" MB: "<< cudaGetErrorString(cudaMalloc(&GstackIndex, camera->get_numRays()*STACK_DIM*sizeof(index_node_t))) << std::endl;
 	std::cerr<<"Allocating memory octree state stackActual "<<camera->get_numRays()*sizeof(int)/1024.0f/1024.0f<<" MB: "<< cudaGetErrorString(cudaMalloc(&GstackActual, camera->get_numRays()*sizeof(int))) << std::endl;
 	std::cerr<<"Allocating memory octree state stackLevel "<<camera->get_numRays()*STACK_DIM*sizeof(int)/1024.0f/1024.0f<<" MB: "<< cudaGetErrorString(cudaMalloc(&GstackLevel, camera->get_numRays()*STACK_DIM*sizeof(int))) << std::endl;
-
-	resetState();
-
 }
 
-Octree::~Octree()
+Octree_thread::~Octree_thread()
 {
-	cudaFree(octree);	
-	cudaFree(memoryGPU);	
-	cudaFree(sizes);
+	cudaFree(GstackActual);
+	cudaFree(GstackIndex);
+	cudaFree(GstackLevel);
 }
 
-float Octree::getIsosurface()
-{
-	return isosurface; 
-}
-
-int Octree::getnLevels()
+int Octree_thread::getnLevels()
 {
 	return nLevels;
 }
 
+void Octree_thread::resetState()
+{
+	int numElements = camera->get_numRays();
+	dim3 threads = getThreads(numElements);
+	dim3 blocks = getBlocks(numElements);
+
+	cuda_resetState<<<blocks,threads>>>(numElements, GstackActual, GstackIndex, GstackLevel);
+	std::cerr<<"Launching kernek blocks ("<<blocks.x<<","<<blocks.y<<","<<blocks.z<<") threads ("<<threads.x<<","<<threads.y<<","<<threads.z<<") error: "<< cudaGetErrorString(cudaGetLastError())<<std::endl;
+}
+
 /* Dado un rayo devuelve true si el rayo impacta contra el volumen, el primer box del nivel dado contra el que impacta y la distancia entre el origen del rayo y la box */
-bool Octree::getBoxIntersected(int finalLevel, visibleCube_t * visibleGPU, visibleCube_t * visibleCPU)
+bool Octree_thread::getBoxIntersected(visibleCube_t * visibleGPU, visibleCube_t * visibleCPU)
 {
 	std::cerr<<"Getting firts box intersected"<<std::endl;
 
@@ -890,7 +803,7 @@ bool Octree::getBoxIntersected(int finalLevel, visibleCube_t * visibleGPU, visib
 
 	//std::cerr<<"Set HEAP size: "<< cudaGetErrorString(cudaThreadSetLimit(cudaLimitMallocHeapSize , numElements*1216)) << std::endl;
 
-	cuda_getFirtsVoxel<<<blocks,threads>>>(octree, sizes, nLevels, camera->get_position(), camera->get_rayDirections(), finalLevel, visibleGPU, numElements, GstackActual, GstackIndex, GstackLevel);
+	cuda_getFirtsVoxel<<<blocks,threads>>>(octree, sizes, nLevels, camera->get_position(), camera->get_rayDirections(), maxLevel, visibleGPU, numElements, GstackActual, GstackIndex, GstackLevel);
 
 	std::cerr<<"Launching kernek blocks ("<<blocks.x<<","<<blocks.y<<","<<blocks.z<<") threads ("<<threads.x<<","<<threads.y<<","<<threads.z<<") error: "<< cudaGetErrorString(cudaGetLastError())<<std::endl;
 
@@ -898,14 +811,4 @@ bool Octree::getBoxIntersected(int finalLevel, visibleCube_t * visibleGPU, visib
 
 	std::cerr<<"End Getting firts box intersected"<<std::endl;
 	return true;
-}
-
-void Octree::resetState()
-{
-	int numElements = camera->get_numRays();
-	dim3 threads = getThreads(numElements);
-	dim3 blocks = getBlocks(numElements);
-
-	cuda_resetState<<<blocks,threads>>>(numElements, GstackActual, GstackIndex, GstackLevel);
-	std::cerr<<"Launching kernek blocks ("<<blocks.x<<","<<blocks.y<<","<<blocks.z<<") threads ("<<threads.x<<","<<threads.y<<","<<threads.z<<") error: "<< cudaGetErrorString(cudaGetLastError())<<std::endl;
 }
