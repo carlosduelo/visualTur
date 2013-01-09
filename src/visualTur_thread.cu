@@ -5,6 +5,7 @@
 #include <iostream>
 #include <fstream>
 #include <sys/time.h>
+#include <pthread.h>
 
 visualTur_thread::visualTur_thread(visualTurParams_thread_t initParams, Octree_device * p_octree_device)
 {
@@ -12,7 +13,8 @@ visualTur_thread::visualTur_thread(visualTurParams_thread_t initParams, Octree_d
 	camera = new Camera(initParams.startRay, initParams.endRay, initParams.numRayPx, initParams.H, initParams.W, initParams.distance, initParams.fov_H, initParams.fov_W);
 
 	// Creating visible cubes array
-	visibleCubesCPU = new visibleCube_t[camera->get_numRays()];
+//	visibleCubesCPU = new visibleCube_t[camera->get_numRays()];
+	std::cerr<<"Allocating memory visibleCubesCPU "<<camera->get_numRays()*sizeof(visibleCube_t)/1024/1024 <<" MB : "<< cudaGetErrorString(cudaHostAlloc((void**)&visibleCubesCPU, camera->get_numRays()*sizeof(visibleCube_t), cudaHostAllocDefault))<<std::endl;
 	std::cerr<<"Allocating memory visibleCubesGPU "<<camera->get_numRays()*sizeof(visibleCube_t)/1024/1024 <<" MB : "<< cudaGetErrorString(cudaMalloc((void**)&visibleCubesGPU, camera->get_numRays()*sizeof(visibleCube_t)))<<std::endl;
 	resetVisibleCubes();
 
@@ -27,6 +29,11 @@ visualTur_thread::visualTur_thread(visualTurParams_thread_t initParams, Octree_d
 
 	// Create rayCaster
 	raycaster = new rayCaster(p_octree_device->getIsosurface(), make_float3(0.0f, 512.0f, 0.0f));
+
+	// Create multithreading stuff
+	pthread_attr_init(&attr_thread);
+	pthread_attr_setdetachstate(&attr_thread, PTHREAD_CREATE_JOINABLE);
+	std::cerr<<"Createing cudaStream"<< cudaGetErrorString(cudaStreamCreate(&stream))<<std::endl;
 }
 
 visualTur_thread::~visualTur_thread()
@@ -37,6 +44,8 @@ visualTur_thread::~visualTur_thread()
 	delete		raycaster;
 	delete[]	visibleCubesCPU;
 	cudaFree(visibleCubesGPU);
+	pthread_attr_destroy(&attr_thread);
+        cudaStreamDestroy(stream);
 }
 
 void visualTur_thread::resetVisibleCubes()

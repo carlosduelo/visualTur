@@ -112,7 +112,8 @@ lruCache::lruCache(char * file_name, char * dataset_name, int maxElements, int3 
 	queuePositionsCPU = new LinkedList(numElementsCPU);
 
 	std::cerr<<"Creating cache in GPU "<< numElements*offsetCube*sizeof(float)/1024/1024<<" MB: "<<cudaGetErrorString(cudaMalloc((void**)&cacheData, numElements*offsetCube*sizeof(float)))<<std::endl;
-	cacheDataCPU = new float[numElementsCPU*offsetCube];
+	//cacheDataCPU = new float[numElementsCPU*offsetCube];
+	std::cerr<<"Allocating memory  cacheDataCPU "<< cudaGetErrorString(cudaHostAlloc((void**)&cacheDataCPU, numElementsCPU*offsetCube*sizeof(float), cudaHostAllocDefault))<<std::endl;
 	//std::cerr<<"Creating cache in CPU: "<<cudaGetErrorString(cudaHostAlloc((void**)&cacheDataCPU, numElementsCPU*offsetCube*sizeof(float),cudaHostAllocDefault))<<std::endl;
 
 	fileManager = new FileManager(file_name, dataset_name);

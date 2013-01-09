@@ -45,10 +45,11 @@ class visualTur_device
 		// Multithreading stuff
 		int			deviceID;
 		int			numThreads;
-		visualTur_thread	deviceThreads;
+		visualTur_thread *	deviceThreads;
+		int			offsetPixelBuffer;
 
 		// Octree, shared for all threads
-		Octree *	octree;
+		Octree_device *	octree;
 		float 		iso;
 		int		octreeLevel;
 

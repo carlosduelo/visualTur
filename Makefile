@@ -8,7 +8,7 @@ LIBRARY=-lm -lhdf5 -lGL -lglut -lGLU -lfreeimage
 
 all: Objects testPrograms utils
 
-Objects: obj/Screen.o obj/Camera.o obj/FileManager.o obj/lruCache.o obj/Octree.o obj/rayCaster.o obj/visualTur.o obj/Octree_thread.o obj/Octree_device.o obj/visualTur_thread.o 
+Objects: obj/Screen.o obj/Camera.o obj/FileManager.o obj/lruCache.o obj/Octree.o obj/rayCaster.o obj/visualTur.o obj/Octree_thread.o obj/Octree_device.o obj/visualTur_thread.o obj/visualTur_device.o 
 
 obj/Screen.o: src/Screen.cpp inc/Screen.hpp
 	$(NVCC) -c $(NFLAGS) $(INCLUDE) src/Screen.cpp -o obj/Screen.o
@@ -30,6 +30,8 @@ obj/visualTur.o: src/visualTur.cu inc/visualTur.hpp
 	$(NVCC) -c  $(NFLAGS) $(INCLUDE) src/visualTur.cu -o obj/visualTur.o
 obj/visualTur_thread.o: src/visualTur_thread.cu inc/visualTur_thread.hpp
 	$(NVCC) -c  $(NFLAGS) $(INCLUDE) src/visualTur_thread.cu -o obj/visualTur_thread.o
+obj/visualTur_device.o: src/visualTur_device.cu inc/visualTur_device.hpp
+	$(NVCC) -c  $(NFLAGS) $(INCLUDE) src/visualTur_thread.cu -o obj/visualTur_device.o
 
 testPrograms: bin/testVisualTur bin/testFileManager
 
