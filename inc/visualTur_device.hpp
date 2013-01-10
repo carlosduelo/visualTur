@@ -45,18 +45,20 @@ class visualTur_device
 		// Multithreading stuff
 		int			deviceID;
 		int			numThreads;
-		visualTur_thread *	deviceThreads;
-		int			offsetPixelBuffer;
+		visualTur_thread **	deviceThreads;
+		int	*		offsetPixelBuffer;
 
 		// Octree, shared for all threads
 		Octree_device *	octree;
 		float 		iso;
 		int		octreeLevel;
 
-	public:
-		visualTur(visualTurParams_device_t initParams);
+		float * 	pixelBuffer;
 
-		~visualTur();
+	public:
+		visualTur_device(visualTurParams_device_t initParams, float * p_pixelBuffer);
+
+		~visualTur_device();
 
 		// Move camera
 		void	camera_Move(float3 Direction);
@@ -67,6 +69,6 @@ class visualTur_device
 		void	camera_MoveUpward(float Distance);
 		void	camera_StrafeRight(float Distance);	
 
-		void updateVisibleCubes(float * pixelBuffer);
+		void updateVisibleCubes();
 };
 #endif

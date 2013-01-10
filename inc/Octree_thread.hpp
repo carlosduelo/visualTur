@@ -32,9 +32,9 @@ class Octree_thread
 
 		int getnLevels();
 
-		void resetState();
+		void resetState(cudaStream_t stream);
 
 		/* Dado un rayo devuelve true si el rayo impacta contra el volumen, el primer box del nivel dado contra el que impacta y la distancia entre el origen del rayo y la box */
-		bool getBoxIntersected(visibleCube_t * visibleGPU, visibleCube_t * visibleCPU);
+		bool getBoxIntersected(visibleCube_t * visibleGPU, visibleCube_t * visibleCPU, cudaStream_t stream);
 };
 #endif

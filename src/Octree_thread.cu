@@ -782,18 +782,18 @@ int Octree_thread::getnLevels()
 	return nLevels;
 }
 
-void Octree_thread::resetState()
+void Octree_thread::resetState(cudaStream_t stream)
 {
 	int numElements = camera->get_numRays();
 	dim3 threads = getThreads(numElements);
 	dim3 blocks = getBlocks(numElements);
 
-	cuda_resetState<<<blocks,threads>>>(numElements, GstackActual, GstackIndex, GstackLevel);
+	cuda_resetState<<<blocks,threads, 0, stream>>>(numElements, GstackActual, GstackIndex, GstackLevel);
 	std::cerr<<"Launching kernek blocks ("<<blocks.x<<","<<blocks.y<<","<<blocks.z<<") threads ("<<threads.x<<","<<threads.y<<","<<threads.z<<") error: "<< cudaGetErrorString(cudaGetLastError())<<std::endl;
 }
 
 /* Dado un rayo devuelve true si el rayo impacta contra el volumen, el primer box del nivel dado contra el que impacta y la distancia entre el origen del rayo y la box */
-bool Octree_thread::getBoxIntersected(visibleCube_t * visibleGPU, visibleCube_t * visibleCPU)
+bool Octree_thread::getBoxIntersected(visibleCube_t * visibleGPU, visibleCube_t * visibleCPU, cudaStream_t stream)
 {
 	std::cerr<<"Getting firts box intersected"<<std::endl;
 
@@ -803,11 +803,11 @@ bool Octree_thread::getBoxIntersected(visibleCube_t * visibleGPU, visibleCube_t 
 
 	//std::cerr<<"Set HEAP size: "<< cudaGetErrorString(cudaThreadSetLimit(cudaLimitMallocHeapSize , numElements*1216)) << std::endl;
 
-	cuda_getFirtsVoxel<<<blocks,threads>>>(octree, sizes, nLevels, camera->get_position(), camera->get_rayDirections(), maxLevel, visibleGPU, numElements, GstackActual, GstackIndex, GstackLevel);
+	cuda_getFirtsVoxel<<<blocks,threads,0,stream>>>(octree, sizes, nLevels, camera->get_position(), camera->get_rayDirections(), maxLevel, visibleGPU, numElements, GstackActual, GstackIndex, GstackLevel);
 
 	std::cerr<<"Launching kernek blocks ("<<blocks.x<<","<<blocks.y<<","<<blocks.z<<") threads ("<<threads.x<<","<<threads.y<<","<<threads.z<<") error: "<< cudaGetErrorString(cudaGetLastError())<<std::endl;
 
-	std::cerr<<"Coping to host visibleCubes: "<< cudaGetErrorString(cudaMemcpy((void*)visibleCPU, (const void*)visibleGPU, numElements*sizeof(visibleCube_t), cudaMemcpyDeviceToHost)) << std::endl;
+	std::cerr<<"Coping to host visibleCubes: "<< cudaGetErrorString(cudaMemcpyAsync((void*)visibleCPU, (const void*)visibleGPU, numElements*sizeof(visibleCube_t), cudaMemcpyDeviceToHost,stream)) << std::endl;
 
 	std::cerr<<"End Getting firts box intersected"<<std::endl;
 	return true;

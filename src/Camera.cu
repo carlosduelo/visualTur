@@ -9,7 +9,7 @@
 #include <iostream>
 #include <fstream>
 
-Camera::Camera(int sRay, int eRay, int nRP, int p_H, int p_W, float p_d, float p_fov_h, float p_fov_w) //inits the values (Position: (0|0|0) Target: (0|0|-1) )
+Camera::Camera(int sRay, int eRay, int nRP, int p_H, int p_W, float p_d, float p_fov_h, float p_fov_w, cudaStream_t stream) //inits the values (Position: (0|0|0) Target: (0|0|-1) )
 {
 	// Init screen
 	screen		= new Screen(p_H, p_W, p_d, p_fov_h, p_fov_w);
@@ -33,7 +33,7 @@ Camera::Camera(int sRay, int eRay, int nRP, int p_H, int p_W, float p_d, float p
 	numRays	= endRay - startRay;
 	std::cerr<<"Allocating memory camera directions buffer: "<<3*numRays*sizeof(float)/1024/1024 << " MB: "<< cudaGetErrorString(cudaMalloc(&rayDirections, 3*numRays*sizeof(float))) << std::endl;
 
-	UpdateRays();
+	UpdateRays(stream);
 }
 
 Camera::~Camera()
@@ -89,26 +89,26 @@ __global__ void cuda_updateRaysAntiAliassing(float * rays, int numRays, int sR, 
 		rays[id+2*numRays] 	= A.z;
 	}
 }
-void Camera::UpdateRays()
+void Camera::UpdateRays(cudaStream_t stream)
 {
 	dim3 threads = getThreads(numRays);
 	dim3 blocks = getBlocks(numRays);
 	std::cerr<<"Launching kernek ray generation blocks ("<<blocks.x<<","<<blocks.y<<","<<blocks.z<<") threads ("<<threads.x<<","<<threads.y<<","<<threads.z<<") error: "<< cudaGetErrorString(cudaGetLastError())<<std::endl;
 	if (numRayPixel == 1)
-		cuda_updateRays<<<blocks, threads>>>(rayDirections, numRays, startRay, up, right, look, screen->get_H(), screen->get_W(), screen->get_h(), screen->get_w(), screen->get_Distance());
+		cuda_updateRays<<<blocks, threads, 0, stream>>>(rayDirections, numRays, startRay, up, right, look, screen->get_H(), screen->get_W(), screen->get_h(), screen->get_w(), screen->get_Distance());
 	else
 		cuda_updateRaysAntiAliassing<<<blocks, threads>>>(rayDirections, numRays, startRay, numRayPixel, up, right, look, screen->get_H(), screen->get_W(), screen->get_h(), screen->get_w(), screen->get_Distance());
 
-	std::cerr<<"Synchronizing calculating rays: " << cudaGetErrorString(cudaDeviceSynchronize()) << std::endl;
+	//std::cerr<<"Synchronizing calculating rays: " << cudaGetErrorString(cudaDeviceSynchronize()) << std::endl;
 }
 
-void Camera::Move(float3 Direction)
+void Camera::Move(float3 Direction, cudaStream_t 	stream)
 {
 	position += Direction;
-	UpdateRays();                                                                
+	UpdateRays(stream);
 }
 
-void Camera::RotateX(float Angle)
+void Camera::RotateX(float Angle, cudaStream_t 	stream)
 {	
 	float  sPI180 = sin(Angle*(M_PI/180.0));
 	float  cPI180 = cos(Angle*(M_PI/180.0));
@@ -122,10 +122,10 @@ void Camera::RotateX(float Angle)
 	//now compute the new UpVector (by cross product)
 	up = (-1.0f) * cross(look,right);
 
-	UpdateRays();                                                                
+	UpdateRays(stream);                                                                
 }
 
-void Camera::RotateY(float Angle)
+void Camera::RotateY(float Angle, cudaStream_t 	stream)
 {
 	float  sPI180 = sin(Angle*(M_PI/180.0));
 	float  cPI180 = cos(Angle*(M_PI/180.0));
@@ -138,10 +138,10 @@ void Camera::RotateY(float Angle)
 
 	//now compute the new RightVector (by cross product)
 	right = cross(look, up);
-	UpdateRays();                                                                
+	UpdateRays(stream);                                                                
 }
 
-void Camera::RotateZ(float Angle)
+void Camera::RotateZ(float Angle, cudaStream_t 	stream)
 {
 	float  sPI180 = sin(Angle*(M_PI/180.0));
 	float  cPI180 = cos(Angle*(M_PI/180.0));
@@ -154,25 +154,25 @@ void Camera::RotateZ(float Angle)
 
 	//now compute the new UpVector (by cross product)
 	up = (-1.0f) * cross(look,right);
-	UpdateRays();                                                                
+	UpdateRays(stream);                                                                
 }
 
-void Camera::MoveForward(float Distance)
+void Camera::MoveForward(float Distance, cudaStream_t 	stream)
 {
 	position += look*(-Distance);
-	UpdateRays();                                                                
+	UpdateRays(stream);                                                                
 }
 
-void Camera::MoveUpward(float Distance)
+void Camera::MoveUpward(float Distance, cudaStream_t 	stream)
 {
 	position += right*Distance;
-	UpdateRays();                                                                
+	UpdateRays(stream);                                                                
 }
 
-void Camera::StrafeRight(float Distance)
+void Camera::StrafeRight(float Distance, cudaStream_t 	stream)
 {
 	position += up*Distance;
-	UpdateRays();                                                                
+	UpdateRays(stream);                                                                
 }
 
 int		Camera::get_H(){return screen->get_H();}

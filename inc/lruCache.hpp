@@ -79,7 +79,7 @@ class lruCache
 		bool insertElement(index_node_t element, unsigned int * position);
 		bool insertElementCPU(index_node_t element, unsigned int * position);
 		#endif
-		void updateCube(visibleCube_t * cube, int nLevels, int * nEinsertedCPU, int * nEinsertedGPU);
+		void updateCube(visibleCube_t * cube, int nLevels, int * nEinsertedCPU, int * nEinsertedGPU, cudaStream_t stream);
 	public:
 		lruCache(char * file_name, char * dataset_name, int maxElements, int3 cDim, int cI, int levelC, int nLevelsO, int maxElementsCPU);
 		
@@ -91,7 +91,7 @@ class lruCache
 
 		void changeDimensionCube(int maxElements, int3 cDim, int cI);
 
-		void updateCache(visibleCube_t * visibleCubes, int num, int nLevels);
+		void updateCache(visibleCube_t * visibleCubes, int num, int nLevels, cudaStream_t stream);
 
 		void printStatistics();
 };

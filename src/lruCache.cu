@@ -113,8 +113,7 @@ lruCache::lruCache(char * file_name, char * dataset_name, int maxElements, int3 
 
 	std::cerr<<"Creating cache in GPU "<< numElements*offsetCube*sizeof(float)/1024/1024<<" MB: "<<cudaGetErrorString(cudaMalloc((void**)&cacheData, numElements*offsetCube*sizeof(float)))<<std::endl;
 	//cacheDataCPU = new float[numElementsCPU*offsetCube];
-	std::cerr<<"Allocating memory  cacheDataCPU "<< cudaGetErrorString(cudaHostAlloc((void**)&cacheDataCPU, numElementsCPU*offsetCube*sizeof(float), cudaHostAllocDefault))<<std::endl;
-	//std::cerr<<"Creating cache in CPU: "<<cudaGetErrorString(cudaHostAlloc((void**)&cacheDataCPU, numElementsCPU*offsetCube*sizeof(float),cudaHostAllocDefault))<<std::endl;
+	std::cerr<<"Creating cache in CPU: "<<cudaGetErrorString(cudaHostAlloc((void**)&cacheDataCPU, numElementsCPU*offsetCube*sizeof(float),cudaHostAllocDefault))<<std::endl;
 
 	fileManager = new FileManager(file_name, dataset_name);
 	access = 0;
@@ -134,8 +133,8 @@ lruCache::~lruCache()
 	delete queuePositions;
 	delete queuePositionsCPU;
 	cudaFree(cacheData);
-	delete[] cacheDataCPU;
-	//cudaFreeHost(cacheDataCPU);
+	//delete[] cacheDataCPU;
+	cudaFreeHost(cacheDataCPU);
 	delete fileManager;
 }
 
@@ -145,8 +144,8 @@ void lruCache::changeDimensionCube(int maxElements, int3 cDim, int cI)
 	cudaFree(cacheData);
 	indexStored.clear();
 	indexStoredCPU.clear();
-	delete[] cacheDataCPU;
-	//cudaFreeHost(cacheDataCPU);
+	//delete[] cacheDataCPU;
+	cudaFreeHost(cacheDataCPU);
 	delete queuePositionsCPU;
 
 	numElements 	= maxElements;
@@ -157,8 +156,8 @@ void lruCache::changeDimensionCube(int maxElements, int3 cDim, int cI)
 	queuePositions  = new LinkedList(numElements);
 
 	std::cerr<<"Creating cache in GPU "<< numElements*offsetCube*sizeof(float)/1024/1024<<" MB: "<<cudaGetErrorString(cudaMalloc((void**)&cacheData, numElements*offsetCube*sizeof(float)))<<std::endl;
-	cacheDataCPU = new float[numElementsCPU*offsetCube];
-	//std::cerr<<"Creating cache in CPU: "<<cudaGetErrorString(cudaHostAlloc((void**)&cacheDataCPU, numElementsCPU*offsetCube*sizeof(float),cudaHostAllocDefault))<<std::endl;
+	//cacheDataCPU = new float[numElementsCPU*offsetCube];
+	std::cerr<<"Creating cache in CPU: "<<numElements*offsetCube*sizeof(float)/1024/1024<<" MB: "<<cudaGetErrorString(cudaHostAlloc((void**)&cacheDataCPU, numElementsCPU*offsetCube*sizeof(float),cudaHostAllocDefault))<<std::endl;
 	access = 0;
 	hitsCPU = 0;
 	hitsGPU = 0;
@@ -166,7 +165,7 @@ void lruCache::changeDimensionCube(int maxElements, int3 cDim, int cI)
 	missGPU = 0;
 }
 
-void lruCache::updateCube(visibleCube_t * cube, int nLevels, int * nEinsertedCPU, int * nEinsertedGPU)
+void lruCache::updateCube(visibleCube_t * cube, int nLevels, int * nEinsertedCPU, int * nEinsertedGPU, cudaStream_t stream)
 {
 	
 	struct timeval stA, endA;
@@ -264,7 +263,7 @@ void lruCache::updateCube(visibleCube_t * cube, int nLevels, int * nEinsertedCPU
 			cube->data = cacheData + posG*offsetCube;
 			cube->state = CACHED;
 			cube->cubeID = idCube;
-			std::cerr<<"Creating cache in GPU: "<<cudaGetErrorString(cudaMemcpy((void*) cube->data, (const void*) (cacheDataCPU + posC*offsetCube), offsetCube*sizeof(float), cudaMemcpyHostToDevice))<<std::endl;
+			std::cerr<<"Creating cache in GPU: "<<cudaGetErrorString(cudaMemcpyAsync((void*) cube->data, (const void*) (cacheDataCPU + posC*offsetCube), offsetCube*sizeof(float), cudaMemcpyHostToDevice, stream))<<std::endl;
 
 			(*nEinsertedGPU)++;
 
@@ -296,7 +295,7 @@ void lruCache::updateCube(visibleCube_t * cube, int nLevels, int * nEinsertedCPU
 	timingAccess += ((endA.tv_sec  - stA.tv_sec) * 1000000u + endA.tv_usec - stA.tv_usec) / 1.e6;
 }
 
-void lruCache::updateCache(visibleCube_t * visibleCubes, int num, int nLevels)
+void lruCache::updateCache(visibleCube_t * visibleCubes, int num, int nLevels, cudaStream_t stream)
 {
 	int newCubesC = 0;
 	int newCubesG = 0;
@@ -306,7 +305,7 @@ void lruCache::updateCache(visibleCube_t * visibleCubes, int num, int nLevels)
 		if (visibleCubes[i].state == NOCACHED || visibleCubes[i].state == CUBE)
 		//if (visibleCubes[i].id != 0 && visibleCubes[i].state != PAINTED)
 		{
-			updateCube(&visibleCubes[i], nLevels, &newCubesC, &newCubesG);
+			updateCube(&visibleCubes[i], nLevels, &newCubesC, &newCubesG, stream);
 		}
 	}
 

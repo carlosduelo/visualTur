@@ -34,15 +34,19 @@ typedef struct
 
 	// Octree
 	int	octreeLevel;
+
+	int	device;
 } visualTurParams_thread_t;
 
 class visualTur_thread
 {
-	private:
+	public:// For multithreading stuff...
+	//private:
 		// Multithreading stuff
 		pthread_t 	id_thread;
 		pthread_attr_t 	attr_thread;
 		cudaStream_t 	stream;
+		int		deviceID;
 
 		Camera * 	camera;
 
@@ -56,10 +60,11 @@ class visualTur_thread
 		int		octreeLevel;
 
 		rayCaster *	raycaster;
+		float	  *	pixelBuffer;
 
 		void resetVisibleCubes();
-	public:
-		visualTur_thread(visualTurParams_thread_t initParams, Octree_device * p_octree_device);
+	//public:
+		visualTur_thread(visualTurParams_thread_t initParams, Octree_device * p_octree_device, float * p_pixelBuffer);
 
 		~visualTur_thread();
 
@@ -75,6 +80,6 @@ class visualTur_thread
 		void	camera_MoveUpward(float Distance);
 		void	camera_StrafeRight(float Distance);	
 
-		void updateVisibleCubes(float * pixelBuffer);
+		void updateVisibleCubes();
 };
 #endif

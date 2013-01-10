@@ -4,15 +4,18 @@
 #include <fstream>
 #include <sys/time.h>
 
-visualTur_device::visualTur_device(visualTurParams_device_t initParams)
+visualTur_device::visualTur_device(visualTurParams_device_t initParams, float * p_pixelBuffer)
 {
 	// Create octree
 	octreeLevel 	= initParams.octreeLevel;
-	octree 		= new Octree(initParams.octreeFile, camera, octreeLevel);
+	octree 		= new Octree_device(initParams.octreeFile, octreeLevel);
 
 	numThreads 	= initParams.numThreads;
-	deviceThreads 	= new deviceThreads*[numThreads];
+	deviceThreads 	= new visualTur_thread*[numThreads];
 	deviceID	= initParams.deviceID;
+
+	offsetPixelBuffer 	= new int[numThreads];
+	pixelBuffer 		= p_pixelBuffer;
 
 	visualTurParams_thread_t initParams_thread;
 	initParams_thread.W 			= initParams.W;
@@ -36,6 +39,8 @@ visualTur_device::visualTur_device(visualTurParams_device_t initParams)
 	// Octree
 	initParams_thread.octreeLevel 		= initParams.octreeLevel;
 
+	initParams_thread.device		= deviceID;
+
 	int totalRays 	= initParams.endRay - initParams.startRay;
 	int numRays 	= totalRays / numThreads;
 	int modRays	= totalRays % numThreads;
@@ -43,17 +48,17 @@ visualTur_device::visualTur_device(visualTurParams_device_t initParams)
 	initParams_thread.startRay      = initParams.startRay;
         initParams_thread.endRay        = initParams.startRay + numRays + modRays;
 	offsetPixelBuffer[0]		= 0;
-        deviceThreads[i] = new visualTur_thread(initParams_thread, octree);
+        deviceThreads[0] 		= new visualTur_thread(initParams_thread, octree, pixelBuffer);
 
 	for(int i=1; i<numThreads; i++)
 	{
 		if (i==1 && modRays != 0)
-			offsetPixelBuffer[i]		= offsetPixelBuffer[i-1] + numRays modRays;
+			offsetPixelBuffer[i]		= offsetPixelBuffer[i-1] + numRays + modRays;
 		else
 			offsetPixelBuffer[i]		= offsetPixelBuffer[i-1] + numRays;
 		initParams_thread.startRay 	= initParams_thread.endRay;
 		initParams_thread.endRay 	= initParams_thread.startRay + numRays;
-		deviceThreads[i] = new visualTur_thread(initParams_thread, octree);
+		deviceThreads[i] = new visualTur_thread(initParams_thread, octree, pixelBuffer + offsetPixelBuffer[i]);
 	}
 }
 
@@ -63,6 +68,8 @@ visualTur_device::~visualTur_device()
 		delete deviceThreads[i];
 
 	delete octree;
+	delete[] offsetPixelBuffer;
+	delete[] deviceThreads;
 }
 		
 void	visualTur_device::camera_Move(float3 Direction)
@@ -83,7 +90,7 @@ void	visualTur_device::camera_Move(float3 Direction)
 	}
 }
 
-void	camera_RotateX(float Angle)
+void	visualTur_device::camera_RotateX(float Angle)
 {
 	
 	for(int i=0; i<numThreads; i++)
@@ -101,7 +108,7 @@ void	camera_RotateX(float Angle)
 	}
 }
 
-void	camera_RotateY(float Angle)
+void	visualTur_device::camera_RotateY(float Angle)
 {
 	
 	for(int i=0; i<numThreads; i++)
@@ -119,7 +126,7 @@ void	camera_RotateY(float Angle)
 	}
 }
 
-void	camera_RotateZ(float Angle)
+void	visualTur_device::camera_RotateZ(float Angle)
 {
 	
 	for(int i=0; i<numThreads; i++)
@@ -137,7 +144,7 @@ void	camera_RotateZ(float Angle)
 	}
 }
 
-void	camera_MoveForward(float Distance)
+void	visualTur_device::camera_MoveForward(float Distance)
 {
 	
 	for(int i=0; i<numThreads; i++)
@@ -155,7 +162,7 @@ void	camera_MoveForward(float Distance)
 	}
 }
 
-void	camera_MoveUpward(float Distance)
+void	visualTur_device::camera_MoveUpward(float Distance)
 {
 	
 	for(int i=0; i<numThreads; i++)
@@ -173,7 +180,7 @@ void	camera_MoveUpward(float Distance)
 	}
 }
 
-void	camera_StrafeRight(float Distance)
+void	visualTur_device::camera_StrafeRight(float Distance)
 {
 	
 	for(int i=0; i<numThreads; i++)
@@ -192,11 +199,11 @@ void	camera_StrafeRight(float Distance)
 }
 
 
-void updateVisibleCubes(float * pixelBuffer)
+void visualTur_device::updateVisibleCubes()
 {
 	
 	for(int i=0; i<numThreads; i++)
-		deviceThreads[i]->updateVisibleCubes(pixelBuffer[offsetPixelBuffer[i]]);
+		deviceThreads[i]->updateVisibleCubes();
 	
 	void * status;
 	for(int i=0; i<numThreads; i++)

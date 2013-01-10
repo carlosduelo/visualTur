@@ -272,23 +272,24 @@ __global__ void cuda_rayCaster(int numRays, float3 ligth, float3 origin, float *
 ******************************************************************************************************
 */
 
-rayCaster::rayCaster(float isosurface, float3 lposition)
+rayCaster::rayCaster(float isosurface, float3 lposition, float * p_pixelBuffer)
 {
 	iso    = isosurface;
 	lightPosition = lposition;
+	pixelBuffer = p_pixelBuffer;
 }
 
 rayCaster::~rayCaster()
 {
 }
 
-void rayCaster::render(Camera * camera, int levelO, int levelC, int nLevel, visibleCube_t * cube, int3 cubeDim, int3 cubeInc, float * buffer)
+void rayCaster::render(Camera * camera, int levelO, int levelC, int nLevel, visibleCube_t * cube, int3 cubeDim, int3 cubeInc, cudaStream_t stream)
 {
 	dim3 threads = getThreads(camera->get_numRays());
 	dim3 blocks = getBlocks(camera->get_numRays());
 	std::cerr<<"Launching kernek blocks ("<<blocks.x<<","<<blocks.y<<","<<blocks.z<<") threads ("<<threads.x<<","<<threads.y<<","<<threads.z<<") error: "<< cudaGetErrorString(cudaGetLastError())<<std::endl;
 
-	cuda_rayCaster<<<blocks, threads>>>(camera->get_numRays(), lightPosition, camera->get_position(), camera->get_rayDirections(), iso, cube, cubeDim, cubeInc, levelO, levelC, nLevel, buffer);
+	cuda_rayCaster<<<blocks, threads, 0, stream>>>(camera->get_numRays(), lightPosition, camera->get_position(), camera->get_rayDirections(), iso, cube, cubeDim, cubeInc, levelO, levelC, nLevel, pixelBuffer);
 	std::cerr<<"Synchronizing rayCaster: " << cudaGetErrorString(cudaDeviceSynchronize()) << std::endl;
 	return;
 }

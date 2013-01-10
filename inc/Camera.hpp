@@ -29,20 +29,20 @@ class Camera
 		float                  	RotatedZ;
 
 		// Private Methods
-		void UpdateRays();
+		void UpdateRays(cudaStream_t 	stream);
 	public:
 
-		Camera(int sRay, int eRay, int nRP, int p_H, int p_W, float p_d, float p_fov_h, float p_fov_w); //inits the values (Position: (0|0|0) Target: (0|0|-1) )
+		Camera(int sRay, int eRay, int nRP, int p_H, int p_W, float p_d, float p_fov_h, float p_fov_w, cudaStream_t stream); //inits the values (Position: (0|0|0) Target: (0|0|-1) )
 
 		~Camera();
 
-		void		Move(float3 Direction);
-		void		RotateX(float Angle);
-		void		RotateY(float Angle);
-		void		RotateZ(float Angle);
-		void		MoveForward(float Distance);
-		void		MoveUpward(float Distance);
-		void		StrafeRight(float Distance);	
+		void		Move(float3 Direction, cudaStream_t 	stream);
+		void		RotateX(float Angle, cudaStream_t 	stream);
+		void		RotateY(float Angle, cudaStream_t 	stream);
+		void		RotateZ(float Angle, cudaStream_t 	stream);
+		void		MoveForward(float Distance, cudaStream_t 	stream);
+		void		MoveUpward(float Distance, cudaStream_t 	stream);
+		void		StrafeRight(float Distance, cudaStream_t 	stream);	
 		int		get_H();
 		int		get_W();
 		float		get_h();

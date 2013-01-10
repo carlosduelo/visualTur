@@ -15,6 +15,8 @@ __global__ void insertOctreePointers(index_node_t ** octreeGPU, int * sizes, ind
 /* Lee el Octree de un fichero */
 Octree_device::Octree_device(const char * file_name, int p_maxLevel)
 {
+	maxLevel = p_maxLevel;	
+
         /* Read octree from file */
 	std::ifstream file;
 
