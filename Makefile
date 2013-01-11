@@ -8,7 +8,7 @@ LIBRARY=-lm -lhdf5 -lGL -lglut -lGLU -lfreeimage
 
 all: Objects testPrograms utils
 
-Objects: obj/Screen.o obj/Camera.o obj/FileManager.o obj/lruCache.o obj/Octree.o obj/rayCaster.o obj/visualTur.o 
+Objects: obj/Screen.o obj/Camera.o obj/FileManager.o obj/lruCache.o obj/Octree.o obj/rayCaster.o obj/visualTur.o obj/CreateOctree.o 
 
 obj/Screen.o: src/Screen.cpp inc/Screen.hpp
 	$(NVCC) -c $(NFLAGS) $(INCLUDE) src/Screen.cpp -o obj/Screen.o
@@ -24,6 +24,8 @@ obj/rayCaster.o: src/rayCaster.cu inc/rayCaster.hpp
 	$(NVCC) -c  $(NFLAGS) $(INCLUDE) src/rayCaster.cu -o obj/rayCaster.o
 obj/visualTur.o: src/visualTur.cu inc/visualTur.hpp
 	$(NVCC) -c  $(NFLAGS) $(INCLUDE) src/visualTur.cu -o obj/visualTur.o
+obj/CreateOctree.o:
+	$(NVCC) -c  $(NFLAGS) $(INCLUDE) src/CreateOctree.cu -o obj/CreateOctree.o
 
 testPrograms: bin/testVisualTur bin/testFileManager bin/testRayCaster bin/drawPixel
 
@@ -39,10 +41,13 @@ bin/testRayCaster: Objects src/testRayCaster.cu
 bin/drawPixel: Objects src/drawPixel.cu
 	$(NVCC) $(NFLAGS) $(INCLUDE) obj/Screen.o obj/Camera.o obj/FileManager.o  obj/lruCache.o obj/Octree.o obj/rayCaster.o obj/visualTur.o src/drawPixel.cu  -o bin/drawPixel $(LIBRARY)
 	
-utils: bin/cutFile
+utils: bin/cutFile bin/volumeToOctree
 
 bin/cutFile: Objects src/cutFile.cu
 	$(NVCC) $(NFLAGS) $(INCLUDE) obj/FileManager.o src/cutFile.cu  -o bin/cutFile $(LIBRARY)
+bin/volumeToOctree: Objects src/VolumeToOctree.cu
+	$(NVCC) $(NFLAGS) $(INCLUDE) obj/FileManager.o obj/CreateOctree.o  src/VolumeToOctree.cu -o bin/volumeToOctree $(LIBRARY)
+
 
 clean:
 	-rm bin/* obj/* ./*.i ./*.ii ./*.cudafe* ./*.fatbin* ./*.hash ./*.module_id ./*.ptx ./*sm*.cubin ./*.o

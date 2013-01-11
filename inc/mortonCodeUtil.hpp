@@ -147,4 +147,37 @@ inline __host__ __device__ index_node_t coordinateToIndex(int3 pos, int level, i
 	return code;
 }
 
+
+inline __host__ __device__ int3 updateCoordinates(int maxLevel, int cLevel, index_node_t cIndex, int nLevel, index_node_t nIndex, int3 minBox)
+{
+	if ( 0 == nIndex)
+	{
+		return make_int3(0,0,0);
+	}
+	else if (cLevel < nLevel)
+	{
+		index_node_t mask = (index_node_t) 1;
+		minBox.z +=  (nIndex & mask) << (maxLevel-nLevel); nIndex>>=1;
+		minBox.y +=  (nIndex & mask) << (maxLevel-nLevel); nIndex>>=1;
+		minBox.x +=  (nIndex & mask) << (maxLevel-nLevel); nIndex>>=1;
+		return minBox;
+
+	}
+	else if (cLevel > nLevel)
+	{
+		return	getMinBoxIndex2(nIndex, nLevel, maxLevel);
+	}
+	else
+	{
+		index_node_t mask = (index_node_t)1;
+		minBox.z +=  (nIndex & mask) << (maxLevel-nLevel); nIndex>>=1;
+		minBox.y +=  (nIndex & mask) << (maxLevel-nLevel); nIndex>>=1;
+		minBox.x +=  (nIndex & mask) << (maxLevel-nLevel); nIndex>>=1;
+		minBox.z -=  (cIndex & mask) << (maxLevel-cLevel); cIndex>>=1;
+		minBox.y -=  (cIndex & mask) << (maxLevel-cLevel); cIndex>>=1;
+		minBox.x -=  (cIndex & mask) << (maxLevel-cLevel); cIndex>>=1;
+		return minBox;
+	}
+}
+
 #endif

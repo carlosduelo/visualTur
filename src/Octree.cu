@@ -583,6 +583,7 @@ __global__ void cuda_search(index_node_t * elements, index_node_t * index, int n
 		search_array[id] = _cuda_binary_search(elements, index[id], min, max);
 }
 
+#if 0
 __device__ int3 _cuda_updateCoordinates(int maxLevel, int cLevel, index_node_t cIndex, int nLevel, index_node_t nIndex, int3 minBox)
 {
 	if ( 0 == nIndex)
@@ -614,6 +615,7 @@ __device__ int3 _cuda_updateCoordinates(int maxLevel, int cLevel, index_node_t c
 		return minBox;
 	}
 }
+#endif
 
 __device__ void _cuda_getFirtsVoxel(index_node_t ** octree, int * sizes, int nLevels, float3 origin, float3 ray, int finalLevel, visibleCube_t * indexNode, int * p_stackActual, index_node_t * p_stackIndex, int * p_stackLevel)
 {
@@ -651,7 +653,7 @@ __device__ void _cuda_getFirtsVoxel(index_node_t ** octree, int * sizes, int nLe
 				return;
 			}
 
-			minBox = _cuda_updateCoordinates(nLevels, currentLevel, current, stackLevel[stackActual], stackIndex[stackActual], minBox);
+			minBox = updateCoordinates(nLevels, currentLevel, current, stackLevel[stackActual], stackIndex[stackActual], minBox);
 
 			current 	= stackIndex[stackActual];
 			currentLevel 	= stackLevel[stackActual];

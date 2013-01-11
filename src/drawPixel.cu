@@ -133,10 +133,10 @@ void KeyDown(unsigned char key, int x, int y)
                         VisualTur->camera_RotateY(-5.0);
                         break;
                 case 'w':
-                        VisualTur->camera_MoveForward( -1.0 ) ;
+                        VisualTur->camera_MoveForward( -5.0 ) ;
                         break;
                 case 's':
-                        VisualTur->camera_MoveForward( 1.0 ) ;
+                        VisualTur->camera_MoveForward( 5.0 ) ;
                         break;
                 case 'x':
                         VisualTur->camera_RotateX(5.0);
@@ -145,16 +145,16 @@ void KeyDown(unsigned char key, int x, int y)
                         VisualTur->camera_RotateX(-5.0);
                         break;
                 case 'c':
-                        VisualTur->camera_StrafeRight(-0.1);
+                        VisualTur->camera_StrafeRight(-5.0);
                         break;
                 case 'v':
-                        VisualTur->camera_StrafeRight(0.1);
+                        VisualTur->camera_StrafeRight(5.0);
                         break;
                 case 'f':
-                        VisualTur->camera_MoveUpward(-0.3);
+                        VisualTur->camera_MoveUpward(-5.0);
                         break;
                 case 'r':
-                        VisualTur->camera_MoveUpward(0.3);
+                        VisualTur->camera_MoveUpward(5.0);
                         break;
                 case 'm':
                         VisualTur->camera_RotateZ(-5.0);
