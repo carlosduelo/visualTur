@@ -40,6 +40,7 @@ __global__ void cuda_updateRays(float3 * rays, int numRayPixel, float3 up, float
 {
 	int id = blockIdx.y * blockDim.x * gridDim.y + blockIdx.x * blockDim.x +threadIdx.x;
 
+#if _IMG_
 	if (id < (W*H))
 	{
 		int i  = id / W;
@@ -54,6 +55,22 @@ __global__ void cuda_updateRays(float3 * rays, int numRayPixel, float3 up, float
 
 		rays[id] = normalize(A);
 	}
+#else
+	if (id < (W*H))
+	{
+		int i  = id / W;
+		int j  = id % W;
+
+		float ih  = h/H;
+		float iw  = w/W;
+
+		float3 A = (look * distance);
+		A += up * (-(h/2.0f) + (ih*(i + 0.5f)));
+		A += right * (-(w/2.0f) + (iw*(j + 0.5f)));
+
+		rays[id] = normalize(A);
+	}
+#endif
 }
 
 void Camera::UpdateRays()

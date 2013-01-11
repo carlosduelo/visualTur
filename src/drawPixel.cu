@@ -1,4 +1,5 @@
 #include "visualTur.hpp"
+#include "hdf5.h"
 #include <GL/gl.h>
 #include <GL/glext.h>
 #include <GL/glut.h>
@@ -19,6 +20,84 @@ int 		currentTime;
 int 		previousTime;
 float		fps;
 
+#define WHERESTR  "Error[file "<<__FILE__<<", line "<<__LINE__<<"]: "
+int getnLevelFile(char * file_name, char * dataset_name)
+{
+
+	hid_t           file_id;
+	hid_t           dataset_id;
+	hid_t           spaceid;
+	int             ndim;
+	hsize_t         dims[3];
+	if ((file_id    = H5Fopen(file_name, H5F_ACC_RDWR, H5P_DEFAULT)) < 0)
+	{
+		std::cerr<< WHERESTR<<" unable to open the requested file"<<std::endl;
+		exit(0);
+	}
+
+	if ((dataset_id = H5Dopen1(file_id, dataset_name)) < 0 )
+	{
+		std::cerr<<WHERESTR<<" unable to open the requested data set"<<std::endl;
+		exit(0);
+	}
+
+	if ((spaceid    = H5Dget_space(dataset_id)) < 0)
+	{
+		std::cerr<<WHERESTR<<" unable to open the requested data space"<<std::endl;
+		exit(0);
+	}
+
+	if ((ndim       = H5Sget_simple_extent_dims (spaceid, dims, NULL)) < 0)
+	{
+		std::cerr<<WHERESTR<<" handling file"<<std::endl;
+		exit(0);
+	}
+
+	herr_t      status;
+
+	if ((status = H5Dclose(dataset_id)) < 0)
+	{
+		std::cerr<<WHERESTR<<" unable to close the data set"<<std::endl;
+		exit(0);
+	}
+
+
+	if ((status = H5Fclose(file_id)) < 0);
+	{
+		std::cerr<<WHERESTR<<" unable to close the file"<<std::endl;
+		#if 0
+		std::cerr<<"Cannot close file with open handles: " << 
+		H5Fget_obj_count( file_id, H5F_OBJ_FILE )  	<<" file, " 	<<
+		H5Fget_obj_count( file_id, H5F_OBJ_DATASET )  	<<" data, " 	<<
+		H5Fget_obj_count( file_id, H5F_OBJ_GROUP )  	<<" group, "	<<
+		H5Fget_obj_count( file_id, H5F_OBJ_DATATYPE )	<<" type, "	<<
+		H5Fget_obj_count( file_id, H5F_OBJ_ATTR )	<<" attr"	<<std::endl;
+		exit(0);
+		#endif
+		//return -1;
+		/*
+		 * XXX cduelo: No entiendo porque falla al cerrar el fichero....
+		 *
+		 */
+	}
+
+	int dimension;
+	if (dims[0]>dims[1] && dims[0]>dims[2])
+                dimension = dims[0];
+        else if (dims[1]>dims[2])
+                dimension = dims[1];
+        else
+                dimension = dims[2];
+
+        /* Calcular dimension del árbol*/
+        float aux = logf(dimension)/logf(2.0);
+        float aux2 = aux - floorf(aux);
+        int nLevels = aux2>0.0 ? aux+1 : aux;
+
+	return nLevels; 
+}
+
+
 void drawFPS()
 {
 	std::cout<<"FPS: "<<fps<<std::endl;
@@ -33,7 +112,7 @@ void display()
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	glDrawPixels(W, H,GL_RGBA, GL_FLOAT, screenC);
+	glDrawPixels(W, H, GL_RGBA, GL_FLOAT, screenC);
 
 	drawFPS();
 
@@ -141,6 +220,30 @@ int main(int argc, char** argv)
 		cudaSetDevice(device);
 	}
 
+	cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
+
+	int x,y,z;
+
+	std::cout<<"Display Resolution:"<<std::endl;
+	std::cout<<"Width: ";
+	std::cin >> W;
+	std::cout<<"Height: ";
+	std::cin >> H;
+	std::cout<<"Camera position (X,Y,Z):"<<std::endl;
+	std::cout<<"X: ";
+	std::cin >> x;
+	std::cout<<"Y: ";
+	std::cin >> y;
+	std::cout<<"Z: ";
+	std::cin >> z;
+	
+
+	int nLevel = getnLevelFile(argv[1], argv[2]);
+	
+	//get the amount of free memory on the graphics card  
+    	size_t free;  
+	size_t total;  
+    	cudaMemGetInfo(&free, &total); 
 
 	visualTurParams_t params;
 	params.W = W;
@@ -149,20 +252,19 @@ int main(int argc, char** argv)
 	params.fov_W = 35.0f;
 	params.distance = 50.0f;
 	params.numRayPx = 1;
-	params.maxElementsCache = 3500;
+	params.maxElementsCache = 3*(free / (66*66*66*4)) /4;
 	params.maxElementsCache_CPU = 5000;
 	params.dimCubeCache = make_int3(64,64,64);
 	params.cubeInc = 2;
-	params.levelCubes = 3;
-	params.octreeLevel =8;
+	params.levelCubes = nLevel - 6;
+	params.octreeLevel = (nLevel - 6) + 3;
 	params.hdf5File = argv[1];
 	params.dataset_name = argv[2];
 	params.octreeFile = argv[3];
 
 	VisualTur = new visualTur(params); 
 
-	VisualTur->camera_Move(make_float3(128.0f, 128.0f, 550.0f));
-	VisualTur->camera_MoveForward(1.0f);
+	VisualTur->camera_Move(make_float3(x,y,z));
 
 	screenG = 0;
 	screenC = new float[H*W*4];

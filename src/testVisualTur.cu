@@ -114,4 +114,5 @@ int main(int argc, char ** argv)
 	cudaFree(screenG);
 	delete[] screenC;
 	FreeImage_DeInitialise();
+	delete VisualTur;
 }
