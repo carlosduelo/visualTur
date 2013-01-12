@@ -457,7 +457,11 @@ void OctreeM::createTree(const char * file_name, int level)
 
 			endBox = getMinBoxIndex2(interFin, nLevels, nLevels);
 
+			std::cout<<startBox.x<<" "<<startBox.y<<" "<<startBox.z<<std::endl;
+			std::cout<<endBox.x<<" "<<endBox.y<<" "<<endBox.z<<std::endl;
+
 			fileManager->readHDF5_Voxel_Array(startBox, endBox + make_int3(2,2,2), container);
+
 
 			int3 		current 	= startBox;
 			index_node_t 	anterior 	= inicio;
@@ -466,10 +470,14 @@ void OctreeM::createTree(const char * file_name, int level)
 
 			while(inicio<=interFin)
 			{
-				current 	= updateCoordinates(nLevels, nLevels, anterior, nLevels, inicio, current);
+				//std::cout<<anterior<<" "<<inicio<<" "<<cArray.x<<" "<<cArray.y<<" "<<cArray.z<<std::endl;
+
+				//current 	= updateCoordinates(nLevels, nLevels, anterior, nLevels, inicio, current);
+				current		= getMinBoxIndex2(inicio, nLevels, nLevels);
 				anterior 	= inicio;
 
 				cArray 		= current - startBox;
+
 				voxel[0] 	= container[posToIndex(cArray.x,cArray.y, cArray.z, dim)];
 				cArray 		= current - startBox + make_int3(0,0,1);
 				voxel[1] 	= container[posToIndex(cArray.x,cArray.y, cArray.z, dim)];

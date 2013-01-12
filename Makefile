@@ -24,7 +24,7 @@ obj/rayCaster.o: src/rayCaster.cu inc/rayCaster.hpp
 	$(NVCC) -c  $(NFLAGS) $(INCLUDE) src/rayCaster.cu -o obj/rayCaster.o
 obj/visualTur.o: src/visualTur.cu inc/visualTur.hpp
 	$(NVCC) -c  $(NFLAGS) $(INCLUDE) src/visualTur.cu -o obj/visualTur.o
-obj/CreateOctree.o:
+obj/CreateOctree.o: src/CreateOctree.cu inc/CreateOctree.hpp 
 	$(NVCC) -c  $(NFLAGS) $(INCLUDE) src/CreateOctree.cu -o obj/CreateOctree.o
 
 testPrograms: bin/testVisualTur bin/testFileManager bin/testRayCaster bin/drawPixel
