@@ -42,7 +42,7 @@ int main(int argc, char ** argv)
 	params.dataset_name = argv[2];
 	params.octreeFile = argv[3];
 
-	params.numThreads = 1;
+	params.numThreads = 2;
 	params.deviceID = device;
 	params.startRay = 0;
 	params.endRay = params.W*params.H*params.numRayPx;
@@ -70,12 +70,12 @@ int main(int argc, char ** argv)
 	//VisualTur->camera_Move(make_float3(1500.0f, 128.0f, 550.0f));
 	//VisualTur->camera_MoveForward(1.0f);
 
-	VisualTur->updateVisibleCubes();
+	//VisualTur->updateVisibleCubes();
 
 	FreeImage_Initialise();
 	FIBITMAP * bitmap = FreeImage_Allocate(H,W,24);
 	RGBQUAD color;
-#if 0
+#if 1
 	struct timeval st, end;
 	gettimeofday(&st, NULL);
 	for(int m=0; m<10; m++)
@@ -110,7 +110,7 @@ int main(int argc, char ** argv)
 		std::stringstream name;
 		name<<"prueba"<<m<<".png";
 		FreeImage_Save(FIF_PNG, bitmap, name.str().c_str(), 0);
-		VisualTur->camera_StrafeRight(0.5f);
+		//VisualTur->camera_StrafeRight(0.5f);
 	}
 	gettimeofday(&end, NULL);
 	double delta = ((end.tv_sec  - st.tv_sec) * 1000000u + end.tv_usec - st.tv_usec) / 1.e6;

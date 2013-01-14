@@ -760,6 +760,7 @@ Octree_thread::Octree_thread(Octree_device * p_octree, Camera * p_camera, int p_
 {
 	camera 		= p_camera;
 	maxLevel 	= p_maxLevel;
+	nLevels		= p_octree->getnLevels();
 
 	octree		= p_octree->getOctree();
 	sizes		= p_octree->getSizes();	

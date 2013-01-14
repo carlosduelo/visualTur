@@ -14,7 +14,6 @@ visualTur_device::visualTur_device(visualTurParams_device_t initParams, float * 
 	deviceThreads 	= new visualTur_thread*[numThreads];
 	deviceID	= initParams.deviceID;
 
-	offsetPixelBuffer 	= new int[numThreads];
 	pixelBuffer 		= p_pixelBuffer;
 
 	visualTurParams_thread_t initParams_thread;
@@ -47,18 +46,13 @@ visualTur_device::visualTur_device(visualTurParams_device_t initParams, float * 
 
 	initParams_thread.startRay      = initParams.startRay;
         initParams_thread.endRay        = initParams.startRay + numRays + modRays;
-	offsetPixelBuffer[0]		= 0;
         deviceThreads[0] 		= new visualTur_thread(initParams_thread, octree, pixelBuffer);
 
 	for(int i=1; i<numThreads; i++)
 	{
-		if (i==1 && modRays != 0)
-			offsetPixelBuffer[i]		= offsetPixelBuffer[i-1] + numRays + modRays;
-		else
-			offsetPixelBuffer[i]		= offsetPixelBuffer[i-1] + numRays;
 		initParams_thread.startRay 	= initParams_thread.endRay;
 		initParams_thread.endRay 	= initParams_thread.startRay + numRays;
-		deviceThreads[i] = new visualTur_thread(initParams_thread, octree, pixelBuffer + offsetPixelBuffer[i]);
+		deviceThreads[i] = new visualTur_thread(initParams_thread, octree, pixelBuffer + (4*initParams_thread.startRay));
 	}
 }
 
@@ -68,7 +62,6 @@ visualTur_device::~visualTur_device()
 		delete deviceThreads[i];
 
 	delete octree;
-	delete[] offsetPixelBuffer;
 	delete[] deviceThreads;
 }
 		

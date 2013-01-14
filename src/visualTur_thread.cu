@@ -276,7 +276,7 @@ void *_thread_updateVisibleCubes(void * param)
 	{
 		o->octree->getBoxIntersected(o->visibleCubesGPU, o->visibleCubesCPU, o->stream);
 		cudaStreamSynchronize(o->stream); 
-
+		
 		o->cache->updateCache(o->visibleCubesCPU, o->camera->get_numRays(), o->octree->getnLevels(), o->stream);
 		int numP = 0;
 		for(int i=0; i<o->camera->get_numRays(); i++)
