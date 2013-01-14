@@ -7,11 +7,19 @@
 #include <fstream>
 #include <sstream>
 
+#ifdef _INTERGL_
+#include <cuda_runtime.h>
+#include <cuda_gl_interop.h>
+GLuint  positionsVBO;
+struct cudaGraphicsResource* positionsVBO_CUDA;
+#else
+float * screenG;
+float * screenC;
+#endif
+
 int W = 1024;
 int H = 1024;
 visualTur * VisualTur; 
-float * screenG;
-float * screenC;
 
 
 //FPS
@@ -106,6 +114,34 @@ void drawFPS()
 void display()
 {
 
+#ifdef _INTERGL_
+	// Map buffer object for writing from CUDA
+	float * positions;
+	cudaGraphicsMapResources(1, &positionsVBO_CUDA, 0);
+	size_t num_bytes;
+	cudaGraphicsResourceGetMappedPointer((void**)&positions, &num_bytes, positionsVBO_CUDA);
+
+	//VisualTur->updateVisibleCubes(positions);
+
+	// Unmap buffer object
+	cudaGraphicsUnmapResources(1, &positionsVBO_CUDA, 0);
+	// Render from buffer object
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+/*
+	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, positionsVBO);
+	glVertexPointer(4, GL_FLOAT, 0, 0);
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glDrawArrays(GL_POINTS, 0, width * height);
+	glDisableClientState(GL_VERTEX_ARRAY);
+*/
+	drawFPS();
+
+	// Swap buffers
+	glutSwapBuffers();
+	glutPostRedisplay();
+
+
+#else
 	VisualTur->updateVisibleCubes(screenG);
 
 	std::cerr<<"Retrieve screen from GPU: "<< cudaGetErrorString(cudaMemcpy((void*) screenC, (const void*) screenG, sizeof(float)*W*H*4, cudaMemcpyDeviceToHost))<<std::endl;
@@ -117,6 +153,7 @@ void display()
 	drawFPS();
 
 	glutSwapBuffers();
+#endif
 }
 
 void KeyDown(unsigned char key, int x, int y)
@@ -217,10 +254,7 @@ int main(int argc, char** argv)
 	if (argc > 4)
 	{
 		device = atoi(argv[4]);
-		cudaSetDevice(device);
 	}
-
-	cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
 
 	int x,y,z;
 
@@ -237,8 +271,34 @@ int main(int argc, char** argv)
 	std::cout<<"Z: ";
 	std::cin >> z;
 	
-
 	int nLevel = getnLevelFile(argv[1], argv[2]);
+
+	#ifdef _INTERGL_
+	cudaGLSetGLDevice(device);
+
+	// Create buffer object and register it with CUDA
+	glGenBuffers(1, &positionsVBO);
+	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, positionsVBO);
+	unsigned int size = W * H * 4 * sizeof(float);
+	glBufferData(GL_PIXEL_UNPACK_BUFFER, size, 0, GL_DYNAMIC_DRAW);
+	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+/*
+glBindBuffer(GL_ARRAY_BUFFER, positionsVBO);
+unsigned int size = W* H* 4 * sizeof(float);
+glBufferData(GL_ARRAY_BUFFER, size, 0, GL_DYNAMIC_DRAW);
+glBindBuffer(GL_ARRAY_BUFFER, 0);
+*/
+	cudaGraphicsGLRegisterBuffer(&positionsVBO_CUDA, positionsVBO, cudaGraphicsMapFlagsWriteDiscard);
+
+	#else
+
+	cudaSetDevice(device);
+	screenG = 0;
+	screenC = new float[H*W*4];
+	std::cerr<<"Allocating memory octree CUDA screen: "<< cudaGetErrorString(cudaMalloc((void**)&screenG, sizeof(float)*H*W*4))<<std::endl;
+	#endif
+
+	cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
 	
 	//get the amount of free memory on the graphics card  
     	size_t free;  
@@ -266,14 +326,9 @@ int main(int argc, char** argv)
 
 	VisualTur->camera_Move(make_float3(x,y,z));
 
-	screenG = 0;
-	screenC = new float[H*W*4];
-
-	std::cerr<<"Allocating memory octree CUDA screen: "<< cudaGetErrorString(cudaMalloc((void**)&screenG, sizeof(float)*H*W*4))<<std::endl;
-
 	glutInit(&argc, argv);
 
-	glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
+	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
 	glutInitWindowSize(W, H);
 	glutCreateWindow(argv[1]);
 

@@ -493,16 +493,7 @@ void OctreeM::createTree(const char * file_name, int level)
 				voxel[6] 	= container[posToIndex(cArray.x,cArray.y, cArray.z, dim)];
 				cArray 		= current - startBox + make_int3(1,1,1);
 				voxel[7] 	= container[posToIndex(cArray.x,cArray.y, cArray.z, dim)];
-			#if 0	
-				voxel[0] = container->getElement(x,y,z);
-				voxel[1] = container->getElement(x,y,z+1);
-				voxel[2] = container->getElement(x,y+1,z);
-				voxel[3] = container->getElement(x,y+1,z+1);
-				voxel[4] = container->getElement(x+1,y,z);
-				voxel[5] = container->getElement(x+1,y,z+1);
-				voxel[6] = container->getElement(x+1,y+1,z);
-				voxel[7] = container->getElement(x+1,y+1,z+1);
-			#endif
+
 				bool has = false; // XXX Quitar de la comprobacion del bucle y anadir break
 				bool sign = (voxel[0] - isosurface) < 0;
 				for (int i = 1; i < 8 && !has; ++i)

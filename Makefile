@@ -27,7 +27,7 @@ obj/visualTur.o: src/visualTur.cu inc/visualTur.hpp
 obj/CreateOctree.o: src/CreateOctree.cu inc/CreateOctree.hpp 
 	$(NVCC) -c  $(NFLAGS) $(INCLUDE) src/CreateOctree.cu -o obj/CreateOctree.o
 
-testPrograms: bin/testVisualTur bin/testFileManager bin/testRayCaster bin/drawPixel
+testPrograms: bin/testVisualTur bin/testFileManager bin/testRayCaster bin/drawPixel bin/drawPixel_vbo
 
 bin/testFileManager: Objects src/testFileManager.cu
 	$(NVCC) $(NFLAGS) $(INCLUDE) obj/FileManager.o src/testFileManager.cu  -o bin/testFileManager $(LIBRARY)
@@ -40,6 +40,8 @@ bin/testRayCaster: Objects src/testRayCaster.cu
 
 bin/drawPixel: Objects src/drawPixel.cu
 	$(NVCC) $(NFLAGS) $(INCLUDE) obj/Screen.o obj/Camera.o obj/FileManager.o  obj/lruCache.o obj/Octree.o obj/rayCaster.o obj/visualTur.o src/drawPixel.cu  -o bin/drawPixel $(LIBRARY)
+bin/drawPixel_vbo: Objects src/drawPixel.cu
+	$(NVCC) $(NFLAGS) $(INCLUDE) -D_INTERGL_ -DGL_GLEXT_PROTOTYPES obj/Screen.o obj/Camera.o obj/FileManager.o  obj/lruCache.o obj/Octree.o obj/rayCaster.o obj/visualTur.o src/drawPixel.cu  -o bin/drawPixel_vbo $(LIBRARY)
 	
 utils: bin/cutFile bin/volumeToOctree
 
