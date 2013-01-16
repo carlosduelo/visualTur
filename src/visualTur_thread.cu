@@ -7,6 +7,18 @@
 #include <sys/time.h>
 #include <pthread.h>
 
+/* Struct parameters */
+struct param_t
+{
+	visualTur_thread * 	object;
+	float			number;
+	float3			coord;
+	float		*	buffer;
+};
+
+param_t paramT;
+
+
 visualTur_thread::visualTur_thread(visualTurParams_thread_t initParams, Octree_device * p_octree_device, float * p_pixelBuffer)
 {
 
@@ -37,6 +49,8 @@ visualTur_thread::visualTur_thread(visualTurParams_thread_t initParams, Octree_d
 	// Create rayCaster
 	pixelBuffer = p_pixelBuffer;
 	raycaster = new rayCaster(p_octree_device->getIsosurface(), make_float3(0.0f, 512.0f, 0.0f), pixelBuffer);
+
+	paramT.object = this;
 }
 
 visualTur_thread::~visualTur_thread()
@@ -62,23 +76,16 @@ pthread_t visualTur_thread::getID_thread()
 	return id_thread;
 }
 
-/* Struct parameters */
-struct param_t
-{
-	visualTur_thread * 	object;
-	float			number;
-	float3			coord;
-	float		*	buffer;
-};
 
 /* Function executed by the thread */
 void *_thread_camera_Move(void * param)
 {
-	//param_t * 		p = (param_t*) param;
-	visualTur_thread * 	o = (visualTur_thread*) param;//p->object;
+	param_t * 		p = (param_t*) param;
+	visualTur_thread * 	o = (visualTur_thread*) p->object;
 	
 	cudaSetDevice(o->deviceID);
-	o->camera->Move((float3)make_float3(128.0f, 128.0f, 550.0f),o->stream);//p->coord, o->stream);
+	o->camera->Move((float3)p->coord,o->stream);//p->coord, o->stream);
+	//o->camera->Move((float3)p->coord,o->stream);//p->coord, o->stream);
 	o->resetVisibleCubes();
 	o->octree->resetState(o->stream);
 	//cudaStreamSynchronize(o->stream); // Posible synchronize point
@@ -88,11 +95,9 @@ void *_thread_camera_Move(void * param)
 
 void	visualTur_thread::camera_Move(float3 Direction)
 {
-	param_t param;
-	param.object 	= this;
-	param.coord	= Direction;
+	paramT.coord	= Direction;
 	
-	int rc = pthread_create(&id_thread, NULL, _thread_camera_Move, (void *)this);//&param);
+	int rc = pthread_create(&id_thread, NULL, _thread_camera_Move, (void *)&paramT);
 	if (rc)
 	{
 		std::cout << "Error:unable to create thread," << rc << std::endl;
@@ -116,11 +121,9 @@ void *_thread_camera_RotateX(void * param)
 }
 void	visualTur_thread::camera_RotateX(float Angle)
 {
-	param_t param;
-	param.object 	= this;
-	param.number	= Angle;
+	paramT.number	= Angle;
 
-	int rc = pthread_create(&id_thread, NULL, _thread_camera_RotateX, (void *)&param);
+	int rc = pthread_create(&id_thread, NULL, _thread_camera_RotateX, (void *)&paramT);
 	if (rc)
 	{
 		std::cout << "Error:unable to create thread," << rc << std::endl;
@@ -143,11 +146,9 @@ void *_thread_camera_RotateY(void * param)
 }
 void	visualTur_thread::camera_RotateY(float Angle)
 {
-	param_t param;
-	param.object 	= this;
-	param.number	= Angle;
+	paramT.number	= Angle;
 
-	int rc = pthread_create(&id_thread, NULL, _thread_camera_RotateY, (void *)&param);
+	int rc = pthread_create(&id_thread, NULL, _thread_camera_RotateY, (void *)&paramT);
 	if (rc)
 	{
 		std::cout << "Error:unable to create thread," << rc << std::endl;
@@ -170,11 +171,9 @@ void *_thread_camera_RotateZ(void * param)
 }
 void	visualTur_thread::camera_RotateZ(float Angle)
 {
-	param_t param;
-	param.object 	= this;
-	param.number	= Angle;
+	paramT.number	= Angle;
 
-	int rc = pthread_create(&id_thread, NULL, _thread_camera_RotateZ, (void *)&param);
+	int rc = pthread_create(&id_thread, NULL, _thread_camera_RotateZ, (void *)&paramT);
 	if (rc)
 	{
 		std::cout << "Error:unable to create thread," << rc << std::endl;
@@ -197,11 +196,9 @@ void *_thread_camera_MoveForward(void * param)
 }
 void	visualTur_thread::camera_MoveForward(float Distance)
 {
-	param_t param;
-	param.object 	= this;
-	param.number	= Distance;
+	paramT.number	= Distance;
 
-	int rc = pthread_create(&id_thread, NULL, _thread_camera_MoveForward, (void *)&param);
+	int rc = pthread_create(&id_thread, NULL, _thread_camera_MoveForward, (void *)&paramT);
 	if (rc)
 	{
 		std::cout << "Error:unable to create thread," << rc << std::endl;
@@ -224,11 +221,9 @@ void *_thread_camera_MoveUpward(void * param)
 }
 void	visualTur_thread::camera_MoveUpward(float Distance)
 {
-	param_t param;
-	param.object 	= this;
-	param.number	= Distance;
+	paramT.number	= Distance;
 
-	int rc = pthread_create(&id_thread, NULL, _thread_camera_MoveUpward, (void *)&param);
+	int rc = pthread_create(&id_thread, NULL, _thread_camera_MoveUpward, (void *)&paramT);
 	if (rc)
 	{
 		std::cout << "Error:unable to create thread," << rc << std::endl;
@@ -251,11 +246,9 @@ void *_thread_camera_StrafeRight(void * param)
 }
 void	visualTur_thread::camera_StrafeRight(float Distance)
 {
-	param_t param;
-	param.object 	= this;
-	param.number	= Distance;
+	paramT.number	= Distance;
 
-	int rc = pthread_create(&id_thread, NULL, _thread_camera_StrafeRight, (void *)&param);
+	int rc = pthread_create(&id_thread, NULL, _thread_camera_StrafeRight, (void *)&paramT);
 	if (rc)
 	{
 		std::cout << "Error:unable to create thread," << rc << std::endl;
