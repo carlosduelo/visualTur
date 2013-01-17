@@ -55,7 +55,7 @@ __global__ void cuda_updateRays(float * rays, int numRays, int sR, float3 up, fl
 		float iw  = w/W;
 
 		float3 A = (look * distance);
-		A += up * ((h/2.0f) - (ih*(i + 0.5f)));
+		A += up * (-(h/2.0f) + (ih*(i + 0.5f)));
 		A += right * (-(w/2.0f) + (iw*(j + 0.5f)));
 		A = normalize(A);
 

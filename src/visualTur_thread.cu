@@ -8,15 +8,6 @@
 #include <pthread.h>
 
 /* Struct parameters */
-struct param_t
-{
-	visualTur_thread * 	object;
-	float			number;
-	float3			coord;
-	float		*	buffer;
-};
-
-param_t paramT;
 
 
 visualTur_thread::visualTur_thread(visualTurParams_thread_t initParams, Octree_device * p_octree_device, float * p_pixelBuffer)
@@ -30,6 +21,7 @@ visualTur_thread::visualTur_thread(visualTurParams_thread_t initParams, Octree_d
 
 	// Creating Camera
 	camera = new Camera(initParams.startRay, initParams.endRay, initParams.numRayPx, initParams.H, initParams.W, initParams.distance, initParams.fov_H, initParams.fov_W, stream);
+	std::cout<<"Camera "<<initParams.startRay <<" "<<initParams.endRay<<std::endl;
 
 	// Creating visible cubes array
 //	visibleCubesCPU = new visibleCube_t[camera->get_numRays()];

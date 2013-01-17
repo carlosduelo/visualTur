@@ -40,6 +40,7 @@ visualTur_device::visualTur_device(visualTurParams_device_t initParams, float * 
 
 	initParams_thread.device		= deviceID;
 
+
 	int totalRays 	= initParams.endRay - initParams.startRay;
 	int numRays 	= totalRays / numThreads;
 	int modRays	= totalRays % numThreads;
@@ -54,6 +55,7 @@ visualTur_device::visualTur_device(visualTurParams_device_t initParams, float * 
 		initParams_thread.endRay 	= initParams_thread.startRay + numRays;
 		deviceThreads[i] = new visualTur_thread(initParams_thread, octree, pixelBuffer + (4*initParams_thread.startRay));
 	}
+
 }
 
 visualTur_device::~visualTur_device()

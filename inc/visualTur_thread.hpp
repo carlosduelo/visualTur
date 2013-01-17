@@ -38,6 +38,16 @@ typedef struct
 	int	device;
 } visualTurParams_thread_t;
 
+class visualTur_thread;
+
+struct param_t
+{
+	visualTur_thread * 	object;
+	float			number;
+	float3			coord;
+	float		*	buffer;
+};
+
 class visualTur_thread
 {
 	public:// For multithreading stuff...
@@ -47,6 +57,7 @@ class visualTur_thread
 		pthread_attr_t 	attr_thread;
 		cudaStream_t 	stream;
 		int		deviceID;
+		param_t		paramT;
 
 		Camera * 	camera;
 

@@ -110,7 +110,7 @@ int main(int argc, char ** argv)
 		std::stringstream name;
 		name<<"prueba"<<m<<".png";
 		FreeImage_Save(FIF_PNG, bitmap, name.str().c_str(), 0);
-		//VisualTur->camera_StrafeRight(0.5f);
+		VisualTur->camera_StrafeRight(0.5f);
 	}
 	gettimeofday(&end, NULL);
 	double delta = ((end.tv_sec  - st.tv_sec) * 1000000u + end.tv_usec - st.tv_usec) / 1.e6;

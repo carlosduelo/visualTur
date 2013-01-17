@@ -270,6 +270,10 @@ int main(int argc, char** argv)
 	std::cin >> y;
 	std::cout<<"Z: ";
 	std::cin >> z;
+
+	int numT = 1;
+	std::cout<<"Number of threads:"<<std::endl;
+	std::cin >> numT;
 	
 	int nLevel = getnLevelFile(argv[1], argv[2]);
 
@@ -296,6 +300,7 @@ glBindBuffer(GL_ARRAY_BUFFER, 0);
 	screenG = 0;
 	screenC = new float[H*W*4];
 	std::cerr<<"Allocating memory octree CUDA screen: "<< cudaGetErrorString(cudaMalloc((void**)&screenG, sizeof(float)*H*W*4))<<std::endl;
+	std::cerr<<"Cuda mem set: "<<cudaGetErrorString(cudaMemset((void *)screenG,0,sizeof(float)*H*W*4))<<std::endl;		
 	#endif
 
 	cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
@@ -322,7 +327,7 @@ glBindBuffer(GL_ARRAY_BUFFER, 0);
 	params.dataset_name = argv[2];
 	params.octreeFile = argv[3];
 
-	params.numThreads = 2;
+	params.numThreads = numT;
 	params.deviceID = device;
 	params.startRay = 0;
 	params.endRay = params.W*params.H*params.numRayPx;
