@@ -6,27 +6,42 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include "helper_timer.h"
+#include <timer.h>
 
-#ifdef _INTERGL_
-#include <cuda_runtime.h>
-#include <cuda_gl_interop.h>
-GLuint  positionsVBO;
-struct cudaGraphicsResource* positionsVBO_CUDA;
-#else
 float * screenG;
 float * screenC;
-#endif
 
 int W = 1024;
 int H = 1024;
 visualTur_device * VisualTur; 
 
+int fpsCount = 0;        // FPS count for averaging
+int fpsLimit = 1;        // FPS limit for sampling
+float avgFPS = 0.0f;
+unsigned int frameCount = 0;
+#define MAX(a,b) ((a > b) ? a : b)
+StopWatchInterface *timer = NULL;
 
-//FPS
-long long int 	frameCount = 0;
-int 		currentTime;
-int 		previousTime;
-float		fps;
+void computeFPS()
+{
+    frameCount++;
+    fpsCount++;
+
+    if (fpsCount == fpsLimit)
+    {
+        avgFPS = 1.f / (sdkGetAverageTimerValue(&timer) / 1000.f);
+        fpsCount = 0;
+        fpsLimit = (int)MAX(avgFPS, 1.f);
+
+        sdkResetTimer(&timer);
+    }
+
+    char fps[256];
+    sprintf(fps, "%3.1f fps (Max 100Hz)", avgFPS);
+    glutSetWindowTitle(fps);
+}
+
 
 #define WHERESTR  "Error[file "<<__FILE__<<", line "<<__LINE__<<"]: "
 int getnLevelFile(char * file_name, char * dataset_name)
@@ -73,20 +88,6 @@ int getnLevelFile(char * file_name, char * dataset_name)
 	if ((status = H5Fclose(file_id)) < 0);
 	{
 		std::cerr<<WHERESTR<<" unable to close the file"<<std::endl;
-		#if 0
-		std::cerr<<"Cannot close file with open handles: " << 
-		H5Fget_obj_count( file_id, H5F_OBJ_FILE )  	<<" file, " 	<<
-		H5Fget_obj_count( file_id, H5F_OBJ_DATASET )  	<<" data, " 	<<
-		H5Fget_obj_count( file_id, H5F_OBJ_GROUP )  	<<" group, "	<<
-		H5Fget_obj_count( file_id, H5F_OBJ_DATATYPE )	<<" type, "	<<
-		H5Fget_obj_count( file_id, H5F_OBJ_ATTR )	<<" attr"	<<std::endl;
-		exit(0);
-		#endif
-		//return -1;
-		/*
-		 * XXX cduelo: No entiendo porque falla al cerrar el fichero....
-		 *
-		 */
 	}
 
 	int dimension;
@@ -105,43 +106,10 @@ int getnLevelFile(char * file_name, char * dataset_name)
 	return nLevels; 
 }
 
-
-void drawFPS()
-{
-	std::cout<<"FPS: "<<fps<<std::endl;
-}
-
 void display()
 {
+	sdkStartTimer(&timer);
 
-#ifdef _INTERGL_
-	// Map buffer object for writing from CUDA
-	float * positions;
-	cudaGraphicsMapResources(1, &positionsVBO_CUDA, 0);
-	size_t num_bytes;
-	cudaGraphicsResourceGetMappedPointer((void**)&positions, &num_bytes, positionsVBO_CUDA);
-
-	//VisualTur->updateVisibleCubes(positions);
-
-	// Unmap buffer object
-	cudaGraphicsUnmapResources(1, &positionsVBO_CUDA, 0);
-	// Render from buffer object
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-/*
-	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, positionsVBO);
-	glVertexPointer(4, GL_FLOAT, 0, 0);
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glDrawArrays(GL_POINTS, 0, width * height);
-	glDisableClientState(GL_VERTEX_ARRAY);
-*/
-	drawFPS();
-
-	// Swap buffers
-	glutSwapBuffers();
-	glutPostRedisplay();
-
-
-#else
 	VisualTur->updateVisibleCubes();
 
 	std::cerr<<"Retrieve screen from GPU: "<< cudaGetErrorString(cudaMemcpy((void*) screenC, (const void*) screenG, sizeof(float)*W*H*4, cudaMemcpyDeviceToHost))<<std::endl;
@@ -150,10 +118,10 @@ void display()
 
 	glDrawPixels(W, H, GL_RGBA, GL_FLOAT, screenC);
 
-	drawFPS();
-
 	glutSwapBuffers();
-#endif
+
+	sdkStopTimer(&timer);
+	computeFPS();
 }
 
 void KeyDown(unsigned char key, int x, int y)
@@ -203,45 +171,6 @@ void KeyDown(unsigned char key, int x, int y)
 	display();
 }
 
-//-------------------------------------------------------------------------
-// Calculates the frames per second
-//-------------------------------------------------------------------------
-void calculateFPS()
-{
-    //  Increase frame count
-    frameCount++;
-
-    //  Get the number of milliseconds since glutInit called
-    //  (or first call to glutGet(GLUT ELAPSED TIME)).
-    currentTime = glutGet(GLUT_ELAPSED_TIME);
-
-    //  Calculate time passed
-    int timeInterval = currentTime - previousTime;
-
-    if(timeInterval > 1000)
-    {
-        //  calculate the number of frames per second
-        fps = frameCount / (timeInterval / 1000.0f);
-
-        //  Set time
-        previousTime = currentTime;
-
-        //  Reset frame count
-        frameCount = 0;
-    }
-}
-
-void idle (void)
-{
-    //  Animate the object
-
-    //  Calculate FPS
-    calculateFPS();
-
-    //  Call display function (draw the current frame)
-    glutPostRedisplay ();
-}
-
 int main(int argc, char** argv)
 {
 	if (argc < 4)
@@ -277,34 +206,16 @@ int main(int argc, char** argv)
 	
 	int nLevel = getnLevelFile(argv[1], argv[2]);
 
-	#ifdef _INTERGL_
-	cudaGLSetGLDevice(device);
-
-	// Create buffer object and register it with CUDA
-	glGenBuffers(1, &positionsVBO);
-	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, positionsVBO);
-	unsigned int size = W * H * 4 * sizeof(float);
-	glBufferData(GL_PIXEL_UNPACK_BUFFER, size, 0, GL_DYNAMIC_DRAW);
-	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-/*
-glBindBuffer(GL_ARRAY_BUFFER, positionsVBO);
-unsigned int size = W* H* 4 * sizeof(float);
-glBufferData(GL_ARRAY_BUFFER, size, 0, GL_DYNAMIC_DRAW);
-glBindBuffer(GL_ARRAY_BUFFER, 0);
-*/
-	cudaGraphicsGLRegisterBuffer(&positionsVBO_CUDA, positionsVBO, cudaGraphicsMapFlagsWriteDiscard);
-
-	#else
-
 	cudaSetDevice(device);
 	screenG = 0;
 	screenC = new float[H*W*4];
 	std::cerr<<"Allocating memory octree CUDA screen: "<< cudaGetErrorString(cudaMalloc((void**)&screenG, sizeof(float)*H*W*4))<<std::endl;
 	std::cerr<<"Cuda mem set: "<<cudaGetErrorString(cudaMemset((void *)screenG,0,sizeof(float)*H*W*4))<<std::endl;		
-	#endif
 
 	cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
 	
+	sdkCreateTimer(&timer);
+
 	//get the amount of free memory on the graphics card  
     	size_t free;  
 	size_t total;  
@@ -317,12 +228,12 @@ glBindBuffer(GL_ARRAY_BUFFER, 0);
 	params.fov_W = 35.0f;
 	params.distance = 50.0f;
 	params.numRayPx = 1;
-	params.maxElementsCache = 3*(free / (66*66*66*4)) /4;
+	params.maxElementsCache = 3*(free / (38*38*38*4)) /4;
 	params.maxElementsCache_CPU = 5000;
-	params.dimCubeCache = make_int3(64,64,64);
+	params.dimCubeCache = make_int3(32,32,32);
 	params.cubeInc = 2;
-	params.levelCubes = nLevel - 6;
-	params.octreeLevel = (nLevel - 6) + 3;
+	params.levelCubes = nLevel - 5;
+	params.octreeLevel = (nLevel - 5) + 3;
 	params.hdf5File = argv[1];
 	params.dataset_name = argv[2];
 	params.octreeFile = argv[3];
@@ -343,11 +254,7 @@ glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glutCreateWindow(argv[1]);
 
 	glutDisplayFunc(display);
-	//glutReshapeFunc(reshape);
-	//glutMouseFunc(mouse_button);
-	//glutMotionFunc(mouse_motion);
 	glutKeyboardFunc(KeyDown);
-	glutIdleFunc(idle);
 
 	glEnable(GL_DEPTH_TEST);
 	glClearColor(0.0, 0.0, 0.0, 1.0);

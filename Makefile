@@ -33,15 +33,19 @@ obj/visualTur_thread.o: src/visualTur_thread.cu inc/visualTur_thread.hpp
 obj/visualTur_device.o: src/visualTur_device.cu inc/visualTur_device.hpp
 	$(NVCC) -c  $(NFLAGS) $(INCLUDE) src/visualTur_device.cu -o obj/visualTur_device.o
 
-testPrograms: bin/testVisualTur_device bin/testFileManager bin/drawPixel
+testPrograms: bin/testVisualTur_device bin/testFileManager bin/drawPixel bin/performance
 
 bin/testFileManager: Objects src/testFileManager.cu
 	$(NVCC) $(NFLAGS) $(INCLUDE) obj/FileManager.o src/testFileManager.cu  -o bin/testFileManager $(LIBRARY)
 
 bin/testVisualTur_device: Objects src/testVisualTur_device.cu
 	$(NVCC) $(NFLAGS) $(INCLUDE) obj/Screen.o obj/Camera.o obj/FileManager.o  obj/lruCache.o obj/Octree_thread.o obj/Octree_device.o obj/rayCaster.o obj/visualTur_device.o obj/visualTur_thread.o src/testVisualTur_device.cu  -o bin/testVisualTur_device $(LIBRARY)
+
 bin/drawPixel: Objects src/drawPixel.cu
 	$(NVCC) $(NFLAGS) $(INCLUDE) obj/Screen.o obj/Camera.o obj/FileManager.o  obj/lruCache.o obj/Octree_device.o obj/Octree_thread.o obj/rayCaster.o obj/visualTur_device.o obj/visualTur_thread.o src/drawPixel.cu  -o bin/drawPixel $(LIBRARY)
+
+bin/performance: Objects src/performance.cu
+	$(NVCC) $(NFLAGS) $(INCLUDE) obj/Screen.o obj/Camera.o obj/FileManager.o  obj/lruCache.o obj/Octree_device.o obj/Octree_thread.o obj/rayCaster.o obj/visualTur_device.o obj/visualTur_thread.o src/performance.cu  -o bin/performance $(LIBRARY)
 
 utils: bin/cutFile
 
