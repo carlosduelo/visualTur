@@ -86,6 +86,20 @@ int main(int argc, char ** argv)
 	int W = 1024;
 	int H = 1024;
 
+	int x,y,z;
+	std::cout<<"Display Resolution:"<<std::endl;
+	std::cout<<"Width: ";
+	std::cin >> W;
+	std::cout<<"Height: ";
+	std::cin >> H;
+	std::cout<<"Camera position (X,Y,Z):"<<std::endl;
+	std::cout<<"X: ";
+	std::cin >> x;
+	std::cout<<"Y: ";
+	std::cin >> y;
+	std::cout<<"Z: ";
+	std::cin >> z;
+
 	int nLevel = getnLevelFile(argv[1], argv[2]);
 
 	cudaSetDevice(device);
@@ -119,7 +133,7 @@ int main(int argc, char ** argv)
 
 	visualTur * VisualTur = new visualTur(params); 
 
-	VisualTur->camera_Move(make_float3(512,512,512));
+	VisualTur->camera_Move(make_float3(x,y,z));
 
 	struct timeval st, end;
 
