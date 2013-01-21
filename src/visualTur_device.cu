@@ -14,7 +14,12 @@ visualTur_device::visualTur_device(visualTurParams_device_t initParams, float * 
 	deviceThreads 	= new visualTur_thread*[numThreads];
 	deviceID	= initParams.deviceID;
 
+	// Create Cache
+	cache 		= new lruCache_device(initParams.hdf5File, initParams.dataset_name, initParams.maxElementsCache, initParams.dimCubeCache, initParams.cubeInc, initParams.levelCubes, initParams.octreeLevel, initParams.maxElementsCache_CPU);
+
 	pixelBuffer 		= p_pixelBuffer;
+
+	
 
 	visualTurParams_thread_t initParams_thread;
 	initParams_thread.W 			= initParams.W;
@@ -25,10 +30,6 @@ visualTur_device::visualTur_device(visualTurParams_device_t initParams, float * 
 	initParams_thread.numRayPx 		= initParams.numRayPx;
 
 	// Cube Cache settings
-	initParams_thread.maxElementsCache 	= initParams.maxElementsCache / numThreads;
-	initParams_thread.maxElementsCache_CPU 	= initParams.maxElementsCache_CPU / numThreads;
-	initParams_thread.dimCubeCache 		= initParams.dimCubeCache;
-	initParams_thread.cubeInc 		= initParams.cubeInc;
 	initParams_thread.levelCubes 		= initParams.levelCubes;
 
 	// hdf5 settings
@@ -47,13 +48,13 @@ visualTur_device::visualTur_device(visualTurParams_device_t initParams, float * 
 
 	initParams_thread.startRay      = initParams.startRay;
         initParams_thread.endRay        = initParams.startRay + numRays + modRays;
-        deviceThreads[0] 		= new visualTur_thread(initParams_thread, octree, pixelBuffer);
+        deviceThreads[0] 		= new visualTur_thread(initParams_thread, octree, cache, pixelBuffer);
 
 	for(int i=1; i<numThreads; i++)
 	{
 		initParams_thread.startRay 	= initParams_thread.endRay;
 		initParams_thread.endRay 	= initParams_thread.startRay + numRays;
-		deviceThreads[i] = new visualTur_thread(initParams_thread, octree, pixelBuffer + (4*initParams_thread.startRay));
+		deviceThreads[i] = new visualTur_thread(initParams_thread, octree, cache, pixelBuffer + (4*initParams_thread.startRay));
 	}
 
 }
@@ -65,6 +66,7 @@ visualTur_device::~visualTur_device()
 
 	delete octree;
 	delete[] deviceThreads;
+	delete cache;
 }
 		
 void	visualTur_device::camera_Move(float3 Direction)

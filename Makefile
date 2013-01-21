@@ -8,7 +8,7 @@ LIBRARY=-lm -lhdf5 -lGL -lglut -lGLU -lfreeimage
 
 all: Objects testPrograms utils
 
-Objects: obj/Screen.o obj/Camera.o obj/FileManager.o obj/lruCache.o obj/Octree.o obj/rayCaster.o obj/Octree_thread.o obj/Octree_device.o obj/visualTur_thread.o obj/visualTur_device.o 
+Objects: obj/Screen.o obj/Camera.o obj/FileManager.o obj/lruCache.o obj/lruCache_device.o obj/Octree.o obj/rayCaster.o obj/Octree_thread.o obj/Octree_device.o obj/visualTur_thread.o obj/visualTur_device.o 
 
 obj/Screen.o: src/Screen.cpp inc/Screen.hpp
 	$(NVCC) -c $(NFLAGS) $(INCLUDE) src/Screen.cpp -o obj/Screen.o
@@ -18,6 +18,8 @@ obj/FileManager.o: src/FileManager.cu inc/FileManager.hpp
 	$(NVCC) -c  $(NFLAGS) $(INCLUDE) src/FileManager.cu -o obj/FileManager.o
 obj/lruCache.o: src/lruCache.cu inc/lruCache.hpp
 	$(NVCC) -c  $(NFLAGS) $(INCLUDE) src/lruCache.cu -o obj/lruCache.o
+obj/lruCache_device.o: src/lruCache_device.cu inc/lruCache_device.hpp
+	$(NVCC) -c  $(NFLAGS) $(INCLUDE) src/lruCache_device.cu -o obj/lruCache_device.o
 obj/Octree.o: src/Octree.cu inc/Octree.hpp
 	$(NVCC) -c  $(NFLAGS) $(INCLUDE) src/Octree.cu -o obj/Octree.o
 obj/Octree_thread.o: src/Octree_thread.cu inc/Octree_thread.hpp
@@ -39,13 +41,13 @@ bin/testFileManager: Objects src/testFileManager.cu
 	$(NVCC) $(NFLAGS) $(INCLUDE) obj/FileManager.o src/testFileManager.cu  -o bin/testFileManager $(LIBRARY)
 
 bin/testVisualTur_device: Objects src/testVisualTur_device.cu
-	$(NVCC) $(NFLAGS) $(INCLUDE) obj/Screen.o obj/Camera.o obj/FileManager.o  obj/lruCache.o obj/Octree_thread.o obj/Octree_device.o obj/rayCaster.o obj/visualTur_device.o obj/visualTur_thread.o src/testVisualTur_device.cu  -o bin/testVisualTur_device $(LIBRARY)
+	$(NVCC) $(NFLAGS) $(INCLUDE) obj/Screen.o obj/Camera.o obj/FileManager.o  obj/lruCache_device.o obj/Octree_thread.o obj/Octree_device.o obj/rayCaster.o obj/visualTur_device.o obj/visualTur_thread.o src/testVisualTur_device.cu  -o bin/testVisualTur_device $(LIBRARY)
 
 bin/drawPixel: Objects src/drawPixel.cu
-	$(NVCC) $(NFLAGS) $(INCLUDE) obj/Screen.o obj/Camera.o obj/FileManager.o  obj/lruCache.o obj/Octree_device.o obj/Octree_thread.o obj/rayCaster.o obj/visualTur_device.o obj/visualTur_thread.o src/drawPixel.cu  -o bin/drawPixel $(LIBRARY)
+	$(NVCC) $(NFLAGS) $(INCLUDE) obj/Screen.o obj/Camera.o obj/FileManager.o  obj/lruCache_device.o obj/Octree_device.o obj/Octree_thread.o obj/rayCaster.o obj/visualTur_device.o obj/visualTur_thread.o src/drawPixel.cu  -o bin/drawPixel $(LIBRARY)
 
 bin/performance: Objects src/performance.cu
-	$(NVCC) $(NFLAGS) $(INCLUDE) obj/Screen.o obj/Camera.o obj/FileManager.o  obj/lruCache.o obj/Octree_device.o obj/Octree_thread.o obj/rayCaster.o obj/visualTur_device.o obj/visualTur_thread.o src/performance.cu  -o bin/performance $(LIBRARY)
+	$(NVCC) $(NFLAGS) $(INCLUDE) obj/Screen.o obj/Camera.o obj/FileManager.o  obj/lruCache_device.o obj/Octree_device.o obj/Octree_thread.o obj/rayCaster.o obj/visualTur_device.o obj/visualTur_thread.o src/performance.cu  -o bin/performance $(LIBRARY)
 
 utils: bin/cutFile
 

@@ -53,6 +53,9 @@ class visualTur_device
 		float 		iso;
 		int		octreeLevel;
 
+		// lruCache sahred by all threads
+		lruCache_device * cache;
+
 		float * 	pixelBuffer;
 
 	public:

@@ -6,7 +6,7 @@
 #ifndef _VISUALTUR_THREAD_H_
 #define _VISUALTUR_THREAD_H_
 #include "Octree_thread.hpp"
-#include "lruCache.hpp"
+#include "lruCache_device.hpp"
 #include "rayCaster.hpp"
 
 typedef struct
@@ -22,10 +22,6 @@ typedef struct
 	int	endRay;
 
 	// Cube Cache settings
-	int	maxElementsCache;
-	int	maxElementsCache_CPU;
-	int3	dimCubeCache;
-	int	cubeInc;
 	int	levelCubes;
 
 	// hdf5 settings
@@ -64,8 +60,8 @@ class visualTur_thread
 		visibleCube_t *	visibleCubesCPU;
 		visibleCube_t *	visibleCubesGPU;
 
-		lruCache *	cache;
-		int		cubeLevel;
+		lruCache_device *cache;
+		int		 cubeLevel;
 
 		Octree_thread *	octree;
 		int		octreeLevel;
@@ -75,7 +71,7 @@ class visualTur_thread
 
 		void resetVisibleCubes();
 	//public:
-		visualTur_thread(visualTurParams_thread_t initParams, Octree_device * p_octree_device, float * p_pixelBuffer);
+		visualTur_thread(visualTurParams_thread_t initParams, Octree_device * p_octree_device, lruCache_device * p_cache, float * p_pixelBuffer);
 
 		~visualTur_thread();
 

@@ -10,7 +10,7 @@
 /* Struct parameters */
 
 
-visualTur_thread::visualTur_thread(visualTurParams_thread_t initParams, Octree_device * p_octree_device, float * p_pixelBuffer)
+visualTur_thread::visualTur_thread(visualTurParams_thread_t initParams, Octree_device * p_octree_device, lruCache_device * p_cache, float * p_pixelBuffer)
 {
 
 	// Create multithreading stuff
@@ -35,8 +35,8 @@ visualTur_thread::visualTur_thread(visualTurParams_thread_t initParams, Octree_d
 	octree->resetState(stream);
 
 	// Cache creation
-	cache = new lruCache(initParams.hdf5File, initParams.dataset_name, initParams.maxElementsCache, initParams.dimCubeCache, initParams.cubeInc, initParams.levelCubes, initParams.octreeLevel,initParams.maxElementsCache_CPU);
-	cubeLevel = initParams.levelCubes;
+	cache 		= p_cache; 
+	cubeLevel 	= initParams.levelCubes;
 
 	// Create rayCaster
 	pixelBuffer = p_pixelBuffer;
@@ -48,7 +48,6 @@ visualTur_thread::visualTur_thread(visualTurParams_thread_t initParams, Octree_d
 visualTur_thread::~visualTur_thread()
 {
 	delete 		camera;
-	delete		cache;
 	delete		octree;
 	delete		raycaster;
 	//delete[]	visibleCubesCPU;
